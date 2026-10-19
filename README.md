@@ -17,19 +17,19 @@ sdk/
 
 ---
 
-## 1. Sử dụng trực tiếp từ GitHub qua `npx` (Không cần cài đặt)
+# Sử dụng trực tiếp từ GitHub qua `npx` (Không cần cài đặt)
 
-Sau khi push repo này lên GitHub (ví dụ: `github.com/duxbo/ecomcx-sdk`), bất kỳ ai cũng có thể chạy ngay lập tức:
+Sau khi push repo này lên GitHub (`github.com/Ecomcx-Jsc/ecomcx-sdk`), bất kỳ ai cũng có thể chạy ngay lập tức:
 
 ```bash
 # Tạo plugin mới
-npx github:duxbo/ecomcx-sdk plugin "Tên Plugin"
+npx github:Ecomcx-Jsc/ecomcx-sdk plugin "Tên Plugin"
 
 # Tạo theme mới
-npx github:duxbo/ecomcx-sdk theme "Tên Theme"
+npx github:Ecomcx-Jsc/ecomcx-sdk theme "Tên Theme"
 
 # Đóng gói plugin / theme thành file .zip
-npx github:duxbo/ecomcx-sdk pack <đường-dẫn-thư-mục>
+npx github:Ecomcx-Jsc/ecomcx-sdk pack <đường-dẫn-thư-mục>
 ```
 
 ---
