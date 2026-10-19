@@ -10,6 +10,10 @@
   "workspaces": [
     "packages/*"
   ],
+  "dependencies": {
+    "adm-zip": "0.5.18",
+    "esbuild": "0.25.12"
+  },
   "scripts": {
     "test": "node packages/create-cms/bin/cms.mjs --help"
   },
