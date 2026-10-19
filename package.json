@@ -1,0 +1,27 @@
+{
+  "name": "ecomcx-sdk",
+  "version": "1.0.0",
+  "description": "Ecomcx Nexus SDK - Developer Tools, CLI and Libraries for Theme & Plugin Development",
+  "type": "module",
+  "bin": {
+    "create-cms": "packages/create-cms/bin/cms.mjs",
+    "cms": "packages/create-cms/bin/cms.mjs"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "test": "node packages/create-cms/bin/cms.mjs --help"
+  },
+  "keywords": [
+    "cms",
+    "ecomcx",
+    "sdk",
+    "theme",
+    "plugin",
+    "nextjs",
+    "react"
+  ],
+  "author": "Ecomcx Nexus Team",
+  "license": "MIT"
+}

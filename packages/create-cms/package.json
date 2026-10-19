@@ -1,0 +1,22 @@
+{
+  "name": "create-cms",
+  "version": "1.0.0",
+  "description": "CLI tạo, kiểm tra, đóng gói và triển khai theme/plugin cho CMS",
+  "type": "module",
+  "bin": {
+    "create-cms": "bin/cms.mjs",
+    "cms": "bin/cms.mjs"
+  },
+  "files": [
+    "bin",
+    "lib"
+  ],
+  "dependencies": {
+    "@cms/admin-sdk": "file:../admin-sdk",
+    "adm-zip": "0.5.18",
+    "esbuild": "0.25.12"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

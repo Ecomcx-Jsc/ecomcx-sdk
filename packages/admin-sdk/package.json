@@ -1,0 +1,14 @@
+{
+  "name": "@cms/admin-sdk",
+  "version": "1.0.0",
+  "description": "SDK cho phần admin của plugin: đăng ký trang, meta box, widget dashboard và dùng bộ UI của admin.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./react": "./src/react.ts",
+    "./jsx-runtime": "./src/jsx-runtime.ts"
+  },
+  "files": ["src"]
+}

@@ -1,0 +1,63 @@
+import fs from "node:fs";
+import path from "node:path";
+import { spawn } from "node:child_process";
+
+export const c = {
+  green: (s) => `\x1b[32m${s}\x1b[0m`, red: (s) => `\x1b[31m${s}\x1b[0m`, yellow: (s) => `\x1b[33m${s}\x1b[0m`,
+  cyan: (s) => `\x1b[36m${s}\x1b[0m`, dim: (s) => `\x1b[2m${s}\x1b[0m`, bold: (s) => `\x1b[1m${s}\x1b[0m`,
+};
+
+export function readJson(file) {
+  try { return JSON.parse(fs.readFileSync(file, "utf8")); } catch { return null; }
+}
+
+export function write(file, content) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, content.replace(/^\n/, ""));
+}
+
+export function slugify(s) {
+  return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/g, "d").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+export function pascal(s) {
+  return slugify(s).split("-").filter(Boolean).map((w) => w[0].toUpperCase() + w.slice(1)).join("");
+}
+
+export function run(cmd, args, opts = {}) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(cmd, args, { stdio: opts.quiet ? "pipe" : "inherit", ...opts });
+    let out = "";
+    child.stdout?.on("data", (d) => (out += d));
+    child.stderr?.on("data", (d) => (out += d));
+    child.on("error", reject);
+    child.on("close", (code) => (code === 0 ? resolve(out) : reject(new Error(`${cmd} thoát với mã ${code}\n${out}`))));
+  });
+}
+
+export function parseArgs(argv) {
+  const args = { _: [] };
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a.startsWith("--")) {
+      const [k, v] = a.slice(2).split("=");
+      if (v !== undefined) args[k] = v;
+      else if (argv[i + 1] && !argv[i + 1].startsWith("--")) args[k] = argv[++i];
+      else args[k] = true;
+    } else args._.push(a);
+  }
+  return args;
+}
+
+/** Tìm thư mục gốc monorepo CMS (có sdk/theme-sdk) để dev local; trả null nếu không có. */
+export function findCmsRepo(start = process.cwd()) {
+  if (process.env.CMS_REPO && fs.existsSync(path.join(process.env.CMS_REPO, "sdk"))) return path.resolve(process.env.CMS_REPO);
+  let dir = path.resolve(start);
+  for (let i = 0; i < 8; i++) {
+    if (fs.existsSync(path.join(dir, "sdk", "theme-sdk", "package.json")) && fs.existsSync(path.join(dir, "backend"))) return dir;
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return null;
+}
