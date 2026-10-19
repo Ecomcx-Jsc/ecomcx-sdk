@@ -16,7 +16,9 @@
   ],
   "peerDependencies": {
     "next": ">=16",
-    "next-fetch-kit": ">=0.5.0",
     "react": ">=19"
+  },
+  "dependencies": {
+    "next-fetch-kit": "github:Dungnecauoi/next-fetch-kit#v0.5.0"
   }
 }
