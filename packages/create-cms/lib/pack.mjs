@@ -104,6 +104,7 @@ export async function pack(dir, { out } = {}) {
       if (manifest.admin) {
         console.log(c.cyan("  • Bundle admin (esbuild)…"));
         const outFile = path.join(root, manifest.admin.entry);
+        fs.mkdirSync(path.dirname(outFile), { recursive: true });
         if (!(await buildAdmin(dir, outFile))) fs.copyFileSync(path.join(dir, manifest.admin.entry), outFile);
       }
 
