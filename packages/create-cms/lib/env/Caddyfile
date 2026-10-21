@@ -1,0 +1,58 @@
+# Một tên miền cho cả website, trang quản trị (/admin) và API.
+# SITE_ADDRESS là tên miền (vd example.com) → Caddy tự xin và gia hạn chứng chỉ HTTPS (Let's Encrypt).
+# Mặc định ":80" → HTTP thường: chạy thử trên máy, hoặc đứng sau một proxy khác lo HTTPS (Coolify, Cloudflare…).
+#
+# TRUSTED_PROXIES: dải IP của proxy đứng TRƯỚC Caddy (vd "private_ranges" trên Coolify, hoặc dải IP của Cloudflare).
+# Chỉ khi request đến từ các dải này Caddy mới tin X-Forwarded-For / X-Forwarded-Proto mà proxy đó gửi.
+# Mặc định chỉ tin chính máy (127.0.0.1) = Caddy đứng trực tiếp ngoài Internet.
+{
+	servers {
+		trusted_proxies static {$TRUSTED_PROXIES:127.0.0.1/32}
+		# Đọc X-Forwarded-For từ phải sang trái, bỏ qua các proxy tin cậy → không giả được IP bằng cách tự gửi header
+		trusted_proxies_strict
+		client_ip_headers X-Forwarded-For
+	}
+}
+
+{$SITE_ADDRESS::80} {
+	encode zstd gzip
+
+	# Kênh nội bộ giữa Builder và API (callback build, tải mã theme/plugin) — không mở ra Internet.
+	# Phải là một khối handle đứng trước: Caddy xếp "handle" trước "respond", nên "respond" đứng riêng sẽ không có tác dụng.
+	@internal path /api/internal /api/internal/*
+	handle @internal {
+		respond 404
+	}
+
+	# Route API của website Next.js (bình luận, proxy plugin, xem trước, xoá cache)
+	@frontend_api path /api/cms/* /api/revalidate /api/preview /api/preview/*
+	handle @frontend_api {
+		reverse_proxy builder:3000 {
+			header_up X-Forwarded-For {client_ip}
+		}
+	}
+
+	# CMS API, trang quản trị, file media, file tĩnh của extension, SignalR
+	@cms path /api/* /admin /admin/* /uploads/* /extensions/* /hubs/* /health
+	handle @cms {
+		reverse_proxy api:8080 {
+			# IP thật của người dùng (một giá trị) — API/Builder dùng cho rate limit, chống dò mật khẩu, nhật ký
+			header_up X-Forwarded-For {client_ip}
+			# Bật/tắt plugin backend hoặc cập nhật → API khởi động lại vài giây.
+			# Caddy giữ request và thử kết nối lại thay vì trả lỗi 502: người dùng chỉ thấy chậm một chút.
+			lb_try_duration 45s
+			lb_try_interval 250ms
+		}
+	}
+
+	handle {
+		reverse_proxy builder:3000 {
+			header_up X-Forwarded-For {client_ip}
+		}
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+}

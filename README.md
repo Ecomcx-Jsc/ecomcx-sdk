@@ -57,24 +57,19 @@ git push -u origin main
 
 ---
 
-## 3. Hướng dẫn Publish lên GitHub Packages (`npm.pkg.github.com`)
+## 3. Phát hành SDK (GitHub Release)
 
-GitHub Packages cho phép bạn lưu trữ các gói npm ngay trên GitHub.
+npm không cài được thư mục con của repo git, nên `@cms/admin-sdk` và `@cms/theme-sdk` được phát hành thành tarball (JavaScript đã biên dịch + `.d.ts`) đính kèm GitHub Release. Không cần tài khoản npm hay token khi cài.
 
-### Cách A: Tự động qua GitHub Actions (Khuyên dùng)
-Repo đã được cấu hình sẵn workflow `.github/workflows/publish.yml`.
-1. Vào repository trên GitHub > **Releases** > **Draft a new release**.
-2. Nhập tag (ví dụ `v1.0.0`) và bấm **Publish release**.
-3. GitHub Actions sẽ tự động biên dịch và publish các package lên GitHub Packages.
+1. Tăng `version` trong `packages/*/package.json` (các gói cùng phiên bản).
+2. Thử trên máy: `npm run release` (build vào `dist-release/` và cài thử vào dự án trống).
+3. Tạo release trên GitHub với tag `vX.Y.Z` trùng phiên bản → workflow **Release SDK packages** tự build và đính kèm `cms-admin-sdk-X.Y.Z.tgz`, `cms-theme-sdk-X.Y.Z.tgz`.
 
-### Cách B: Publish thủ công từ máy tính
-1. Đăng nhập vào GitHub Packages:
-   ```bash
-   npm login --registry=https://npm.pkg.github.com
-   # Nhập username GitHub và Personal Access Token (PAT) có quyền write:packages
-   ```
-2. Đổi scope trong `package.json` của từng package theo tên username GitHub của bạn (ví dụ `@duxbo/admin-sdk`, `@duxbo/theme-sdk`, `@duxbo/create-cms`).
-3. Chạy lệnh publish:
-   ```bash
-   npm publish --workspaces --access public
-   ```
+Cài trong core/plugin:
+
+```json
+"@cms/theme-sdk": "https://github.com/Ecomcx-Jsc/ecomcx-sdk/releases/download/vX.Y.Z/cms-theme-sdk-X.Y.Z.tgz",
+"@cms/admin-sdk": "https://github.com/Ecomcx-Jsc/ecomcx-sdk/releases/download/vX.Y.Z/cms-admin-sdk-X.Y.Z.tgz"
+```
+
+CLI `create-cms` không cần tarball — chạy thẳng từ tag: `npx github:Ecomcx-Jsc/ecomcx-sdk#vX.Y.Z pack`. Core ghim tag trong `scripts/cms-cli.sh`.

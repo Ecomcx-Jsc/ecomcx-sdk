@@ -1,31 +1,42 @@
-name: Publish SDK to GitHub Packages
+name: Release SDK packages
 
+# Tạo release (tag vX.Y.Z trùng version của packages/*) → build @cms/admin-sdk, @cms/theme-sdk (JS + .d.ts)
+# và đính kèm tarball vào chính release đó. Core/plugin cài bằng URL:
+#   https://github.com/Ecomcx-Jsc/ecomcx-sdk/releases/download/vX.Y.Z/cms-theme-sdk-X.Y.Z.tgz
 on:
   release:
-    types: [created]
+    types: [published]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag của release cần đính kèm tarball (vd v1.0.0)"
+        required: true
 
 jobs:
-  publish:
+  release:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-      packages: write
+      contents: write
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
         with:
-          node-version: '20'
-          registry-url: 'https://npm.pkg.github.com'
-          scope: '@${{ github.repository_owner }}'
+          ref: ${{ env.TAG }}
 
-      - name: Install Dependencies
-        run: npm install
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
 
-      - name: Publish Packages to GitHub Packages
-        run: npm publish --workspaces --access public
+      - run: npm ci --no-audit --no-fund
+
+      - name: Tag phải trùng phiên bản của các gói
+        run: test "v$(node -p "require('./packages/theme-sdk/package.json').version")" = "$TAG"
+
+      - name: Build + kiểm tra cài thử
+        run: node scripts/release.mjs --check
+
+      - name: Đính kèm tarball vào release
+        run: gh release upload "$TAG" dist-release/*.tgz --clobber
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
