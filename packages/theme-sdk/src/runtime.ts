@@ -1,7 +1,7 @@
 import { cache } from "react";
 import type { ComponentType } from "react";
 import { getSite } from "./api";
-import type { FilterMap, LayoutProps, PluginDefinition, PluginLoader, Site, TemplateProps, ThemeEntry } from "./types";
+import type { FilterMap, LayoutProps, PluginDefinition, PluginLoader, ShortcodeProps, Site, TemplateProps, ThemeEntry } from "./types";
 
 interface RuntimeConfig {
   themes: Record<string, ThemeEntry>;
@@ -120,9 +120,14 @@ export async function hasPlugin(slug: string, site?: Site): Promise<boolean> {
   return (site ?? (await getSite())).activePlugins.includes(slug);
 }
 
+/** Shortcode có sẵn của SDK (plugin cùng tên được ưu tiên): [cms-form plugin="…" table="…" submit="…"]. */
+const BUILTIN_SHORTCODES: Record<string, () => Promise<ComponentType<ShortcodeProps>>> = {
+  "cms-form": async () => (await import("./plugin-form")).CmsFormShortcode,
+};
+
 export async function findShortcode(name: string, site?: Site) {
   for (const d of await getActiveExtensions(site)) if (d.shortcodes?.[name]) return d.shortcodes[name];
-  return null;
+  return BUILTIN_SHORTCODES[name] ? await BUILTIN_SHORTCODES[name]() : null;
 }
 export async function findWidget(type: string, site?: Site) {
   for (const d of await getActiveExtensions(site)) if (d.widgets?.[type]) return d.widgets[type];

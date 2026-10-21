@@ -18,3 +18,5 @@ export async function getThemeSettings() {
   const { getSite } = await import("./api");
   return (await getSite()).themeSettings;
 }
+export { PluginForm } from "./plugin-form";
+export type { PluginFormField } from "./plugin-form-client";
