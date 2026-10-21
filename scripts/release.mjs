@@ -77,6 +77,10 @@ rmSync(path.join(out, "stage"), { recursive: true, force: true });
 if (versions.size !== 1) throw new Error(`Các gói phải cùng phiên bản (đang có ${[...versions].join(", ")})`);
 const version = [...versions][0];
 
+// Bản sao không chứa số phiên bản để URL /releases/latest/download/cms-theme-sdk.tgz luôn cố định
+cpSync(path.join(out, `cms-admin-sdk-${version}.tgz`), path.join(out, "cms-admin-sdk.tgz"));
+cpSync(path.join(out, `cms-theme-sdk-${version}.tgz`), path.join(out, "cms-theme-sdk.tgz"));
+
 if (check) {
   const tmp = path.join(out, "check");
   mkdirSync(tmp, { recursive: true });

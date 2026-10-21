@@ -24,7 +24,11 @@ export function scaffoldTheme(name, { parent, dir } = {}) {
     name: `cms-theme-${slug}`, private: true, version: "1.0.0",
     description: "Thêm dependencies npm mà theme cần vào đây — Builder sẽ tự cài khi build.",
     dependencies: {},
-    devDependencies: { "@cms/theme-sdk": "^1.0.0", "@types/react": "^19", typescript: "5.9.3" },
+    devDependencies: {
+      "@cms/theme-sdk": "https://github.com/Ecomcx-Jsc/ecomcx-sdk/releases/latest/download/cms-theme-sdk.tgz",
+      "@types/react": "^19",
+      typescript: "5.9.3",
+    },
   }, null, 2) + "\n");
 
   write(path.join(root, "tsconfig.json"), JSON.stringify({
@@ -318,6 +322,22 @@ export default definePlugin({
   },
 });
 `);
+  }
+
+  if (admin || frontend) {
+    const devDeps = { "@types/react": "^19", typescript: "5.9.3" };
+    if (admin) devDeps["@cms/admin-sdk"] = "https://github.com/Ecomcx-Jsc/ecomcx-sdk/releases/latest/download/cms-admin-sdk.tgz";
+    if (frontend) devDeps["@cms/theme-sdk"] = "https://github.com/Ecomcx-Jsc/ecomcx-sdk/releases/latest/download/cms-theme-sdk.tgz";
+    write(path.join(root, "package.json"), JSON.stringify({
+      name: `cms-plugin-${slug}`, private: true, version: "1.0.0",
+      description: `Dependencies cho giao diện admin/frontend của plugin ${name}`,
+      dependencies: {},
+      devDependencies: devDeps,
+    }, null, 2) + "\n");
+    write(path.join(root, "tsconfig.json"), JSON.stringify({
+      compilerOptions: { target: "ES2022", module: "esnext", moduleResolution: "bundler", jsx: "react-jsx", strict: true, noEmit: true, skipLibCheck: true },
+      include: ["admin/src/**/*", "frontend/**/*"],
+    }, null, 2) + "\n");
   }
 
   write(path.join(root, "README.md"), `# ${name}\n\nPlugin cho CMS.\n\n- \`backend/\` — C# (Cms.Plugin.Sdk): hook, filter, migration, endpoint, settings\n- \`admin/src/\` — React (@cms/admin-sdk): trang quản trị, meta box\n- \`frontend/\` — React (@cms/theme-sdk): shortcode, widget, slot, filter\n- \`locales/\` — bản dịch theo khoá (ICU), namespace \`${slug}\`: \`createT("${slug}")\` ở admin, \`Text.T("${slug}:khoá")\` ở backend\n\nLệnh:\n\n- \`npx github:Ecomcx-Jsc/ecomcx-sdk validate\`\n- \`npx github:Ecomcx-Jsc/ecomcx-sdk pack\` → \`dist/${slug}-1.0.0.zip\`\n- \`npx github:Ecomcx-Jsc/ecomcx-sdk deploy --password ... --activate\`\n- \`npx github:Ecomcx-Jsc/ecomcx-sdk dev --password ...\` (tự deploy khi sửa file)\n`);
