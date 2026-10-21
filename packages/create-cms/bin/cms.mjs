@@ -24,7 +24,8 @@ const HELP = `${c.bold("create-cms")} — công cụ viết theme/plugin cho CMS
   ${c.cyan("pack")} [thư-mục] [--out dist]         đóng gói → dist/<slug>-<version>.zip
   ${c.cyan("deploy")} [thư-mục] [--activate]       đóng gói + cài lên CMS (--url, --user, --password)
   ${c.cyan("dev")} [thư-mục]                       tự đóng gói + cài lại mỗi khi sửa file
-  ${c.cyan("env")} up | status | down [--purge]   CMS chạy bằng Docker để thử theme/plugin
+  ${c.cyan("env")} up [--dev] [--build DIR] | status | logs [api|builder] [-f] | down [--purge]
+                                      CMS chạy bằng Docker để thử theme/plugin (--dev: sửa là thấy, không build lại)
 
 Mặc định CMS ở http://localhost:5100 (hoặc môi trường của \`env up\`, biến CMS_URL / CMS_USER / CMS_PASSWORD).`;
 
@@ -69,10 +70,15 @@ async function dev(dir) {
     if (again) { again = false; cycle(); }
   };
   await cycle();
-  console.log(c.dim("• Đang theo dõi thay đổi… (Ctrl+C để dừng)"));
+  // Môi trường `env up --dev` đã gắn thẳng thư mục này vào website: phần website (theme, frontend/ của plugin) tự nạp lại,
+  // chỉ cài lại khi đổi phần cần máy chủ (backend, admin, plugin.json, locales)
+  const mounted = (findEnv()?.dev && (findEnv().mounts ?? []).some((m) => path.resolve(m.dir) === path.resolve(dir)));
+  const live = (file) => mounted && (fs.existsSync(path.join(dir, "theme.json")) || /^frontend[\\/]/.test(file));
+  console.log(c.dim(`• Đang theo dõi thay đổi…${mounted ? " (website tự nạp lại, không cần build)" : ""} (Ctrl+C để dừng)`));
   const ignored = /(^|[\\/])(dist|node_modules|bin|obj|\.git|\.next)([\\/]|$)/;
   fs.watch(dir, { recursive: true }, (_e, file) => {
     if (!file || ignored.test(file)) return;
+    if (live(file)) { console.log(c.dim(`• ${file} — website tự nạp lại`)); return; }
     clearTimeout(timer);
     timer = setTimeout(() => { console.log(c.cyan(`\n• ${file} thay đổi`)); cycle(); }, 400);
   });

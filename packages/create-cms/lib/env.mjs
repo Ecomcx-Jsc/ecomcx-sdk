@@ -2,6 +2,9 @@
 //   create-cms env up      dựng CMS (Postgres, Redis, API, website, Caddy) + cài đặt sẵn, in tài khoản quản trị
 //   create-cms env status  trạng thái, địa chỉ, tài khoản
 //   create-cms env down    dừng (giữ dữ liệu)  ·  --purge: xoá luôn dữ liệu
+//   create-cms env logs [api|builder|…] [-f]   xem log
+//   --dev        website chạy `next dev`; theme/plugin trong thư mục hiện tại (và thư mục con) được gắn thẳng vào → sửa là thấy
+//   --build DIR  build image từ mã nguồn CMS ở DIR (khi chưa kéo được image dựng sẵn)
 // Tài khoản được lưu ở .cms-env/credentials.json → `create-cms deploy/dev` tự dùng, không cần --password.
 import crypto from "node:crypto";
 import fs from "node:fs";
@@ -11,7 +14,21 @@ import { c, readJson, run, write } from "./util.mjs";
 
 const cliDir = path.dirname(fileURLToPath(import.meta.url));
 /** Image dựng sẵn của CMS (đổi bằng --api-image/--builder-image hoặc biến CMS_API_IMAGE/CMS_BUILDER_IMAGE). */
-const DEFAULT_IMAGES = { api: "ghcr.io/dungnecauoi/cms-api:1", builder: "ghcr.io/dungnecauoi/cms-builder:1" };
+const DEFAULT_IMAGES = { api: "ghcr.io/ecomcx-jsc/ecomcx-nexus-api:latest", builder: "ghcr.io/ecomcx-jsc/ecomcx-nexus-builder:latest" };
+
+/** Theme/plugin đang viết ở thư mục hiện tại và thư mục con (+ --mount) → gắn vào Builder khi chạy --dev. */
+export function devMounts(args) {
+  const roots = [process.cwd(), ...fs.readdirSync(process.cwd(), { withFileTypes: true }).filter((d) => d.isDirectory() && !d.name.startsWith(".") && d.name !== "node_modules").map((d) => path.resolve(d.name))];
+  for (const m of [args.mount ?? []].flat()) roots.push(path.resolve(m));
+  const mounts = [];
+  for (const dir of [...new Set(roots)]) {
+    const theme = readJson(path.join(dir, "theme.json"));
+    const plugin = readJson(path.join(dir, "plugin.json"));
+    if (theme?.slug) mounts.push({ kind: "theme", slug: theme.slug, dir, target: `/app/frontend/themes/${theme.slug}` });
+    else if (plugin?.slug && plugin.frontend?.entry) mounts.push({ kind: "plugin", slug: plugin.slug, dir, target: `/dev-plugins/${plugin.slug}` });
+  }
+  return mounts;
+}
 
 /** File cấu hình đi kèm gói (lib/env/) hoặc lấy từ thư mục deploy/ khi chạy trong repo CMS. */
 function asset(name) {
@@ -49,7 +66,7 @@ services:
     restart: unless-stopped
     healthcheck: { test: ["CMD", "redis-cli", "ping"], interval: 3s, retries: 20 }
   api:
-    image: ${o.apiImage}
+${o.buildDir ? `    build: { context: ${JSON.stringify(o.buildDir)}, dockerfile: backend/Dockerfile }\n    image: cms-env-api:local` : `    image: ${o.apiImage}`}
     restart: unless-stopped
     depends_on: { postgres: { condition: service_healthy }, redis: { condition: service_healthy } }
     environment:
@@ -66,11 +83,11 @@ services:
       Security__FrameAncestors__0: ${o.url}
     volumes: [storage:/data, secrets:/secrets:ro]
   builder:
-    image: ${o.builderImage}
+${o.buildDir ? `    build: { context: ${JSON.stringify(o.buildDir)}, dockerfile: builder/Dockerfile }\n    image: cms-env-builder:local` : `    image: ${o.builderImage}`}
     restart: unless-stopped
     depends_on: [api]
-    environment: { CMS_SECRETS_DIR: /secrets, CMS_API_URL: http://api:8080, ADMIN_ORIGINS: ${o.url}, WEB_WORKERS: "1", TRUSTED_PROXY_HOSTS: caddy }
-    volumes: [storage:/data, secrets:/secrets:ro]
+    environment: { CMS_SECRETS_DIR: /secrets, CMS_API_URL: http://api:8080, ADMIN_ORIGINS: ${o.url}, WEB_WORKERS: "1", TRUSTED_PROXY_HOSTS: caddy${o.dev ? ", BUILDER_MODE: dev, BUILDER_DEV_SERVER: \"1\"" : ""} }
+    volumes: [storage:/data, secrets:/secrets:ro${(o.mounts ?? []).map((m) => `, ${JSON.stringify(`${m.dir}:${m.target}:ro`)}`).join("")}]
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
@@ -102,11 +119,31 @@ export async function env(action, args) {
     const url = `http://localhost:${port}`;
     const apiImage = args["api-image"] ?? process.env.CMS_API_IMAGE ?? saved?.apiImage ?? DEFAULT_IMAGES.api;
     const builderImage = args["builder-image"] ?? process.env.CMS_BUILDER_IMAGE ?? saved?.builderImage ?? DEFAULT_IMAGES.builder;
-    write(path.join(dir, "docker-compose.yml"), compose({ project, port, url, apiImage, builderImage }));
+    const dev = Boolean(args.dev ?? saved?.dev);
+    const buildDir = args.build ? path.resolve(args.build) : saved?.buildDir;
+    const mounts = dev ? devMounts(args) : [];
+    write(path.join(dir, "docker-compose.yml"), compose({ project, port, url, apiImage, builderImage, dev, buildDir, mounts }));
     write(path.join(dir, "Caddyfile"), asset("Caddyfile"));
     write(path.join(dir, "init-secrets.sh"), asset("init-secrets.sh"));
     write(path.join(dir, ".gitignore"), "*\n"); // tài khoản & cấu hình máy, không đưa vào git
-    console.log(c.cyan(`• Khởi động CMS (${apiImage})…`));
+    if (dev) {
+      console.log(c.cyan(`• Chế độ dev: website chạy next dev${mounts.length ? `, gắn ${mounts.map((m) => `${m.kind} ${m.slug}`).join(", ")}` : ""}`));
+      if (!mounts.length) console.log(c.yellow("  ! Không thấy theme.json/plugin.json (có phần website) trong thư mục này — chạy lệnh ở thư mục chứa theme/plugin hoặc dùng --mount"));
+    }
+    if (buildDir) {
+      console.log(c.cyan(`• Build image từ mã nguồn ${buildDir} (lần đầu vài phút)…`));
+      await dc("build");
+    } else {
+      const local = async (img) => run("docker", ["image", "inspect", img], { quiet: true }).then(() => true, () => false);
+      const missing = [];
+      for (const [svc, img] of [["api", apiImage], ["builder", builderImage]]) if (!(await local(img))) missing.push(svc);
+      if (missing.length) console.log(c.cyan(`• Kéo image ${apiImage}…`));
+      try { if (missing.length) await dc("pull", ...missing); }
+      catch (e) {
+        throw new Error(`Không kéo được image CMS (${apiImage}). Image có thể chưa được phát hành công khai.\n`
+          + `  Có mã nguồn CMS: create-cms env up --build <thư-mục-mã-nguồn>\n  Hoặc chỉ định image khác: --api-image … --builder-image …\n  Chi tiết: ${e.message.split("\n").slice(-2).join(" ")}`);
+      }
+    }
     await dc("up", "-d");
     if (!(await waitFor(`${url}/api/health`, 240))) throw new Error(`CMS chưa phản hồi ở ${url} — xem log: docker compose -f ${path.relative(process.cwd(), dir)}/docker-compose.yml logs api`);
 
@@ -142,7 +179,7 @@ export async function env(action, args) {
       if (!res.ok) throw new Error(`Cài đặt CMS thất bại: ${res.status} ${await res.text()}`);
       cred = { url, user: "admin", password };
     }
-    cred = { ...cred, project, port, url, apiImage, builderImage };
+    cred = { ...cred, project, port, url, apiImage, builderImage, dev, buildDir, mounts: mounts.map((m) => ({ kind: m.kind, slug: m.slug, dir: m.dir })) };
     write(credFile, JSON.stringify(cred, null, 2) + "\n");
     fs.chmodSync(credFile, 0o600);
     console.log(c.green("✓ CMS đã sẵn sàng"));
@@ -156,13 +193,20 @@ export async function env(action, args) {
     console.log(c.green(args.purge ? "✓ Đã dừng và xoá dữ liệu" : "✓ Đã dừng (dữ liệu được giữ — `env up` để chạy lại)"));
     return;
   }
+  if (action === "logs") {
+    const extra = (args._ ?? []).slice(2);
+    const service = extra.find((x) => !x.startsWith("-"));
+    const follow = args.follow || extra.includes("-f");
+    await run("docker", ["compose", "-f", path.join(dir, "docker-compose.yml"), "logs", "--tail", "200", ...(follow ? ["-f"] : []), ...(service ? [service] : [])], { quiet: false });
+    return;
+  }
   if (action === "status") {
     const up = await waitFor(`${saved.url}/api/health`, 2);
-    console.log(up ? c.green("● Đang chạy") : c.yellow("○ Đã dừng"));
+    console.log((up ? c.green("● Đang chạy") : c.yellow("○ Đã dừng")) + (saved.dev ? c.dim(` · dev (${(saved.mounts ?? []).map((m) => m.slug).join(", ") || "không gắn thư mục"})`) : ""));
     if (saved.password) printInfo(saved, dir); else console.log(`  Website     ${saved.url}  (chưa cài đặt hoặc tự cài bằng màn hình cài đặt)`);
     return;
   }
-  throw new Error("Dùng: create-cms env up | status | down [--purge]");
+  throw new Error("Dùng: create-cms env up [--dev] [--build DIR] | status | logs [dịch vụ] [-f] | down [--purge]");
 }
 
 function printInfo(cred, dir) {
