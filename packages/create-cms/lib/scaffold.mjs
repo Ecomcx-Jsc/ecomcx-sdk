@@ -153,13 +153,69 @@ export default definePlugin({
   return { root, slug };
 }
 
+/**
+ * Plugin một file C# (CMS ≥ 1.7.0 tự biên dịch khi cài — không cần .NET SDK, csproj, NuGet):
+ * bảng dữ liệu EF + trang quản trị tự sinh + form trên website ([cms-form]) + hook.
+ */
+export function scaffoldSimplePlugin(name, { dir } = {}) {
+  const slug = slugify(name);
+  const cls = pascal(name) || "MyPlugin";
+  const root = path.resolve(dir ?? slug);
+  if (fs.existsSync(root) && fs.readdirSync(root).length) throw new Error(`Thư mục ${root} đã tồn tại và không rỗng`);
+  write(path.join(root, "plugin.json"), JSON.stringify({ name, slug, version: "1.0.0", author: "", description: `Plugin ${name}`, requires: { cms: ">=1.7.0 <2.0.0" }, backend: `${cls}.cs` }, null, 2) + "\n");
+  write(path.join(root, `${cls}.cs`), `namespace ${cls};
+
+/// Bảng dữ liệu: CMS tự tạo bảng plg_${slug.replace(/-/g, "_")}__entries khi bật plugin, tự thêm cột khi bạn thêm thuộc tính.
+[PluginTable("entries")]
+[AdminList("${name}", Icon = "inbox", Columns = "Name,Email,CreatedAt", Search = "Name,Email,Message")]   // trang quản trị tự sinh
+[PublicCreate(PerMinute = 5, SuccessMessage = "Cảm ơn bạn!")]                                          // form trên website: [cms-form plugin="${slug}" table="entries"]
+public class Entry
+{
+    public long Id { get; set; }
+    [Required, MaxLength(100), Display(Name = "Họ tên")] public string Name { get; set; } = "";
+    [Required, EmailAddress, Display(Name = "Email")] public string Email { get; set; } = "";
+    [MaxLength(2000), Display(Name = "Lời nhắn")] public string? Message { get; set; }
+    [AdminOnly, Display(Name = "Đã xử lý")] public bool Done { get; set; }        // chỉ quản trị viên đặt
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class ${cls}Plugin : CmsPlugin
+{
+    public override void Register(IPluginContext ctx)
+    {
+        ctx.Data.Table<Entry>();
+
+        // Có bản ghi mới từ website → ghi log (đổi thành gửi email, gọi API… tuỳ ý)
+        ctx.Hooks.On<PluginDataEvent>("${slug}:entries.created", (e, h) =>
+        {
+            Console.WriteLine($"[${slug}] mới: {e.Item["name"]} <{e.Item["email"]}>");
+            return Task.CompletedTask;
+        });
+
+        // Endpoint riêng (tuỳ chọn): GET /api/plugins/${slug}/stats
+        ctx.Endpoints.Map(r => r.MapGet("/stats", async (IPluginDb db) =>
+            Results.Ok(new { total = await db.Set<Entry>().CountAsync(), done = await db.Set<Entry>().CountAsync(x => x.Done) })));
+    }
+}
+`);
+  write(path.join(root, "README.md"), `# ${name}
+
+Plugin một file — CMS tự biên dịch \`${cls}.cs\` khi cài (CMS ≥ 1.7.0).
+
+- \`npx github:Ecomcx-Jsc/ecomcx-sdk dev\` — cài lên CMS thử, sửa file là cài lại
+- Trang quản trị: menu **${name}** · Form trên website: \`[cms-form plugin="${slug}" table="entries"]\`
+- Gợi ý code trong VS Code (không bắt buộc): cài .NET SDK + gói \`Cms.Plugin.Sdk\`
+`);
+  return { root, slug };
+}
+
 export function scaffoldPlugin(name, { backend = true, admin = true, frontend = true, dir } = {}) {
   const slug = slugify(name);
   const cls = pascal(name) || "MyPlugin";
   const root = path.resolve(dir ?? slug);
   if (fs.existsSync(root) && fs.readdirSync(root).length) throw new Error(`Thư mục ${root} đã tồn tại và không rỗng`);
 
-  const manifest = { name, slug, version: "1.0.0", author: "", description: `Plugin ${name}`, requires: { cms: ">=1.6.0 <2.0.0" } };
+  const manifest = { name, slug, version: "1.0.0", author: "", description: `Plugin ${name}`, requires: { cms: ">=1.7.0 <2.0.0" } };
   if (backend) manifest.backend = { assembly: `backend/${cls}.dll`, entry: `${cls}.${cls}Plugin` };
   if (admin) manifest.admin = { entry: "admin/index.js" };
   if (frontend) manifest.frontend = { entry: "frontend/index.tsx" };
@@ -191,7 +247,7 @@ export function scaffoldPlugin(name, { backend = true, admin = true, frontend = 
   </PropertyGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
-    <PackageReference Include="Cms.Plugin.Sdk" Version="1.6.0">
+    <PackageReference Include="Cms.Plugin.Sdk" Version="1.7.0">
       <Private>false</Private>
       <ExcludeAssets>runtime</ExcludeAssets>
     </PackageReference>

@@ -4,7 +4,7 @@ import path from "node:path";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import AdmZip from "adm-zip";
-import { c, run } from "./util.mjs";
+import { c, run, backendSources, expandSources } from "./util.mjs";
 import { validate } from "./validate.mjs";
 
 const EXCLUDE = new Set(["node_modules", ".git", "dist", ".DS_Store", "bin", "obj", ".next"]);
@@ -85,7 +85,14 @@ export async function pack(dir, { out } = {}) {
       // Bản dịch theo khoá (locales/{mã}.json) — CMS nạp cho cả admin lẫn backend
       if (fs.existsSync(path.join(dir, "locales"))) copyFiltered(path.join(dir, "locales"), path.join(root, "locales"), (p) => p.endsWith(".json"));
 
-      if (manifest.backend) {
+      const sources = backendSources(manifest);
+      if (sources) {
+        // Mã nguồn C#: CMS tự biên dịch khi cài — chỉ chép file .cs
+        for (const f of expandSources(dir, sources)) {
+          fs.mkdirSync(path.dirname(path.join(root, f)), { recursive: true });
+          fs.copyFileSync(path.join(dir, f), path.join(root, f));
+        }
+      } else if (manifest.backend) {
         const csproj = fs.existsSync(path.join(dir, "backend")) ? fs.readdirSync(path.join(dir, "backend")).find((f) => f.endsWith(".csproj")) : null;
         if (csproj) {
           console.log(c.cyan("  • Build backend (dotnet publish)…"));

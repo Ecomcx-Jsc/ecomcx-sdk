@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { IntlMessageFormat } from "intl-messageformat";
-import { readJson } from "./util.mjs";
+import { readJson, backendSources, expandSources } from "./util.mjs";
 
 const SLUG = /^[a-z0-9][a-z0-9-]{1,63}$/;
 const SEMVER = /^\d+\.\d+\.\d+(?:[-+].*)?$/;
@@ -45,7 +45,14 @@ export function validate(dir) {
     if (fs.existsSync(path.join(dir, "node_modules"))) warnings.push("node_modules sẽ bị loại khỏi gói");
   } else {
     if (!manifest.backend && !manifest.admin && !manifest.frontend) errors.push("Plugin cần ít nhất một phần: backend, admin hoặc frontend");
-    if (manifest.backend && !/\.dll$/i.test(manifest.backend.assembly ?? "")) errors.push("backend.assembly phải là đường dẫn .dll, vd backend/MyPlugin.dll");
+    const sources = backendSources(manifest);
+    if (sources) {
+      for (const s of sources) if (!/^(?!\/)(?!.*\.\.)[A-Za-z0-9_\-./*]+\.cs$/.test(s)) errors.push(`backend: đường dẫn mã nguồn không hợp lệ: ${s}`);
+      const files = expandSources(dir, sources);
+      if (!files.length) errors.push("backend: không thấy file .cs nào");
+      for (const f of files) if (!fs.existsSync(path.join(dir, f))) errors.push(`backend: không thấy ${f}`);
+      if (!/>=\s*1\.([7-9]|\d\d)/.test(manifest.requires?.cms ?? "")) warnings.push('backend dạng mã nguồn cần CMS ≥ 1.7.0 — nên ghi "requires": { "cms": ">=1.7.0" }');
+    } else if (manifest.backend && !/\.dll$/i.test(manifest.backend.assembly ?? "")) errors.push("backend.assembly phải là đường dẫn .dll, vd backend/MyPlugin.dll");
     if (manifest.admin && !/\.js$/i.test(manifest.admin.entry ?? "")) errors.push("admin.entry phải là file .js đã build, vd admin/index.js");
     if (manifest.admin?.loginEntry && !/\.js$/i.test(manifest.admin.loginEntry)) errors.push("admin.loginEntry phải là file .js đã build, vd admin/login.js (nguồn: admin/src/login.tsx)");
     if (manifest.frontend && !/\.(tsx?|jsx?)$/.test(manifest.frontend.entry ?? "")) errors.push("frontend.entry phải là .ts/.tsx/.js/.jsx");
@@ -57,7 +64,7 @@ export function validate(dir) {
       errors.push("Không thấy admin/src/index.tsx (source) hoặc bundle admin đã build");
     const legacy = findLegacyCalls(path.join(dir, "admin", "src"));
     if (legacy.length) warnings.push(`__("…") kiểu cũ ở ${legacy.slice(0, 3).join(", ")}${legacy.length > 3 ? ` (+${legacy.length - 3})` : ""} — dùng createT("${manifest.slug}") với locales/*.json`);
-    if (manifest.backend && !fs.readdirSync(path.join(dir, "backend")).some((f) => f.endsWith(".csproj")) && !fs.existsSync(path.join(dir, manifest.backend.assembly)))
+    if (manifest.backend && !sources && !(fs.existsSync(path.join(dir, "backend")) && fs.readdirSync(path.join(dir, "backend")).some((f) => f.endsWith(".csproj"))) && !fs.existsSync(path.join(dir, manifest.backend.assembly)))
       errors.push("Không thấy backend/*.csproj hoặc DLL đã build");
   }
   return { kind, manifest, errors, warnings };

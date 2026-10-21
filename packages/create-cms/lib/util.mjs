@@ -35,6 +35,37 @@ export function run(cmd, args, opts = {}) {
   });
 }
 
+/** Backend dạng mã nguồn ("backend": "X.cs" / {"sources": [...]}) — CMS ≥ 1.7.0 tự biên dịch khi cài. Không phải → null. */
+export function backendSources(manifest) {
+  const b = manifest?.backend;
+  if (typeof b === "string") return [b];
+  if (b && Array.isArray(b.sources) && b.sources.length) return b.sources;
+  if (b && typeof b.sources === "string") return [b.sources];
+  return null;
+}
+
+// Mở rộng mẫu "a.cs", "src/*.cs" hoặc đệ quy (thư mục có "**") thành danh sách file tương đối, không ra ngoài thư mục.
+export function expandSources(dir, patterns) {
+  const out = new Set();
+  const walk = (d, recursive, re) => {
+    if (!fs.existsSync(d)) return;
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      const p = path.join(d, e.name);
+      if (e.isDirectory()) { if (recursive && e.name !== "node_modules" && e.name !== "bin" && e.name !== "obj") walk(p, recursive, re); }
+      else if (re.test(e.name)) out.add(path.relative(dir, p));
+    }
+  };
+  for (const pat of patterns) {
+    const rel = pat.replace(/\\/g, "/");
+    if (!rel.includes("*")) { out.add(rel); continue; }
+    const recursive = rel.includes("/**/");
+    const base = rel.includes("/") ? rel.slice(0, rel.lastIndexOf("/")).replace("/**", "") : "";
+    const re = new RegExp("^" + path.basename(rel).replace(/\./g, "\\.").replace(/\*/g, ".*") + "$");
+    walk(path.join(dir, base), recursive, re);
+  }
+  return [...out].filter((f) => !f.startsWith("..") && !path.isAbsolute(f));
+}
+
 export function parseArgs(argv) {
   const args = { _: [] };
   for (let i = 0; i < argv.length; i++) {
