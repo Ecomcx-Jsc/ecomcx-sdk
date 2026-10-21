@@ -186,10 +186,14 @@ export async function Comments({ post, title }: { post: Post; title?: string }) 
   const labels = Object.fromEntries(["title", "content", "name", "email", "website", "submit", "sending", "approved", "pending", "error"].map((k) => [k, t(`comments.form.${k}`)]));
   return (
     <section id="comments" className="comments-area">
+      <Slot name="comments.before" props={{ post }} />
       <h2 className="comments-title">{title} ({post.commentCount})</h2>
       {comments.length > 0 && <CommentList comments={comments} site={dateSite} />}
       {(page?.totalPages ?? 1) > 1 && <CommentsMore postId={post.id} totalPages={page.totalPages} site={dateSite} labels={{ more: t("comments.more"), loading: t("comments.loading"), error: t("comments.form.error") }} />}
-      {post.commentStatus === "open" ? <CommentForm postId={post.id} labels={labels} /> : <p className="no-comments">{t("comments.closed")}</p>}
+      {post.commentStatus === "open"
+        ? <CommentForm postId={post.id} labels={labels} fields={<Slot name="comment_form.fields" props={{ post }} />} />
+        : <p className="no-comments">{t("comments.closed")}</p>}
+      <Slot name="comments.after" props={{ post }} />
     </section>
   );
 }

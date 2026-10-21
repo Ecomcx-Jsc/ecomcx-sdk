@@ -20,6 +20,16 @@ function errorMessage(e: unknown, fallback: string) {
   return (e as Error)?.message ?? fallback;
 }
 
+/**
+ * Dữ liệu thêm của plugin (vd token captcha): mọi ô trong form có name bắt đầu bằng "extra." — gửi lên CMS trong "extra",
+ * plugin backend đọc ở action auth.attempt / filter comment.data. Plugin chèn ô qua slot (auth.login.fields, comment_form.fields…).
+ */
+export function extraFields(fd: FormData): Record<string, string> | undefined {
+  const extra: Record<string, string> = {};
+  for (const [k, v] of fd.entries()) if (k.startsWith("extra.") && typeof v === "string") extra[k.slice(6)] = v;
+  return Object.keys(extra).length ? extra : undefined;
+}
+
 /** Tham số trên URL hiện tại (đọc sau khi hiển thị — trang có thể đã được cache tĩnh). */
 function useQueryParam(name: string) {
   const [value, setValue] = useState<string | null>(null);
@@ -57,7 +67,8 @@ function Status({ error, message }: { error?: string; message?: string }) {
 /**
  * Đăng nhập (có bước mã 2 lớp nếu tài khoản bật). Xong thì chuyển tới ?redirect=… (chỉ đường dẫn nội bộ) hoặc <paramref name="redirectTo"/>.
  */
-export function LoginForm({ redirectTo, labels, links = true, paths }: { redirectTo?: string; labels?: Partial<AuthLabels>; links?: boolean; paths?: Partial<AuthPaths> }) {
+/** fields: ô thêm của plugin (captcha…), thường là <Slot name="auth.login.fields" /> — template có sẵn của SDK tự truyền. */
+export function LoginForm({ redirectTo, labels, links = true, paths, fields }: { redirectTo?: string; labels?: Partial<AuthLabels>; links?: boolean; paths?: Partial<AuthPaths>; fields?: ReactNode }) {
   const L = { ...AUTH_LABELS, ...labels };
   const P = { ...AUTH_PATHS, ...paths };
   const redirectParam = useQueryParam("redirect");
@@ -73,7 +84,7 @@ export function LoginForm({ redirectTo, labels, links = true, paths }: { redirec
       type LoginReply = { user?: CurrentUser; twoFactorRequired?: boolean; challenge?: string };
       const { data } = challenge
         ? await authApi.post<LoginReply>("/2fa", { body: { challenge, code: fd.get("code") } })
-        : await authApi.post<LoginReply>("/login", { body: { login: fd.get("login"), password: fd.get("password") } });
+        : await authApi.post<LoginReply>("/login", { body: { login: fd.get("login"), password: fd.get("password"), extra: extraFields(fd) } });
       if (data.twoFactorRequired && data.challenge) { setChallenge(data.challenge); setBusy(false); return; }
       // Tải lại hẳn trang đích: mọi Server Component đọc được cookie phiên mới
       window.location.assign(safeRedirect(redirectParam, redirectTo ?? P.home));
@@ -91,6 +102,7 @@ export function LoginForm({ redirectTo, labels, links = true, paths }: { redirec
         <>
           <Field label={L.login}><input name="login" autoComplete="username" required maxLength={200} /></Field>
           <Field label={L.password}><input name="password" type="password" autoComplete="current-password" required /></Field>
+          {fields}
         </>
       )}
       <p><button type="submit" disabled={busy}>{busy ? L.sending : challenge ? L.verify : L.submitLogin}</button></p>
@@ -103,7 +115,7 @@ export function LoginForm({ redirectTo, labels, links = true, paths }: { redirec
 }
 
 /** Đăng ký thành viên (chỉ khi quản trị viên bật "Ai cũng có thể đăng ký"). Vai trò = vai trò mặc định trong Cài đặt. */
-export function RegisterForm({ labels, links = true, paths }: { labels?: Partial<AuthLabels>; links?: boolean; paths?: Partial<AuthPaths> }) {
+export function RegisterForm({ labels, links = true, paths, fields }: { labels?: Partial<AuthLabels>; links?: boolean; paths?: Partial<AuthPaths>; fields?: ReactNode }) {
   const L = { ...AUTH_LABELS, ...labels };
   const P = { ...AUTH_PATHS, ...paths };
   const [open, setOpen] = useState<boolean | null>(null);
@@ -121,7 +133,7 @@ export function RegisterForm({ labels, links = true, paths }: { labels?: Partial
     setBusy(true); setError(""); setMessage("");
     try {
       const { data } = await authApi.post<{ message: string }>("/register", {
-        body: { userName: fd.get("userName"), email: fd.get("email"), password: fd.get("password"), displayName: fd.get("displayName") || null },
+        body: { userName: fd.get("userName"), email: fd.get("email"), password: fd.get("password"), displayName: fd.get("displayName") || null, extra: extraFields(fd) },
       });
       form.reset();
       setMessage(data.message);
@@ -139,6 +151,7 @@ export function RegisterForm({ labels, links = true, paths }: { labels?: Partial
       <Field label={L.email}><input name="email" type="email" autoComplete="email" required maxLength={200} /></Field>
       <Field label={L.displayName}><input name="displayName" autoComplete="name" maxLength={100} /></Field>
       <Field label={L.password}><input name="password" type="password" autoComplete="new-password" required minLength={10} /></Field>
+      {fields}
       <p><button type="submit" disabled={busy || open === null}>{busy ? L.sending : L.submitRegister}</button></p>
       <Status error={error} message={message} />
       {links && <p className="auth-links">{L.haveAccount} <a href={P.login}>{L.login2}</a></p>}
@@ -147,7 +160,7 @@ export function RegisterForm({ labels, links = true, paths }: { labels?: Partial
 }
 
 /** Gửi email đặt lại mật khẩu (liên kết trỏ về /reset-password của website). */
-export function ForgotPasswordForm({ labels, paths }: { labels?: Partial<AuthLabels>; paths?: Partial<AuthPaths> }) {
+export function ForgotPasswordForm({ labels, paths, fields }: { labels?: Partial<AuthLabels>; paths?: Partial<AuthPaths>; fields?: ReactNode }) {
   const L = { ...AUTH_LABELS, ...labels };
   const P = { ...AUTH_PATHS, ...paths };
   const [busy, setBusy] = useState(false);
@@ -159,7 +172,7 @@ export function ForgotPasswordForm({ labels, paths }: { labels?: Partial<AuthLab
     const fd = new FormData(e.currentTarget);
     setBusy(true); setError(""); setMessage("");
     try {
-      const { data } = await authApi.post<{ message: string }>("/forgot-password", { body: { login: fd.get("login") } });
+      const { data } = await authApi.post<{ message: string }>("/forgot-password", { body: { login: fd.get("login"), extra: extraFields(fd) } });
       setMessage(data.message);
     } catch (err) {
       setError(errorMessage(err, L.error));
@@ -171,6 +184,7 @@ export function ForgotPasswordForm({ labels, paths }: { labels?: Partial<AuthLab
   return (
     <form className="auth-form forgot-form" onSubmit={onSubmit}>
       <Field label={L.login}><input name="login" autoComplete="username" required maxLength={200} /></Field>
+      {fields}
       <p><button type="submit" disabled={busy}>{busy ? L.sending : L.submitForgot}</button></p>
       <Status error={error} message={message} />
       <p className="auth-links"><a href={P.login}>{L.login2}</a></p>

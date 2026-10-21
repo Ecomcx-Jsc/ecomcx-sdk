@@ -1,5 +1,6 @@
 "use client";
 
+import { extraFields } from "./auth-forms";
 import { Component, Suspense, useEffect, useState, type FormEvent } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import NextLink, { useLinkStatus } from "next/link";
@@ -121,7 +122,8 @@ const DEFAULT_LABELS: CommentLabels = {
   error: "Không gửi được bình luận",
 };
 
-export function CommentForm({ postId, parentId, labels }: { postId: number; parentId?: number; labels?: Partial<CommentLabels> }) {
+/** fields: ô thêm của plugin (captcha…) — Comments của SDK truyền <Slot name="comment_form.fields" />. Ô name="extra.*" gửi kèm trong "extra". */
+export function CommentForm({ postId, parentId, labels, fields }: { postId: number; parentId?: number; labels?: Partial<CommentLabels>; fields?: ReactNode }) {
   const L = { ...DEFAULT_LABELS, ...labels };
   const [state, setState] = useState<"idle" | "sending" | "done" | "error">("idle");
   const [message, setMessage] = useState("");
@@ -136,7 +138,7 @@ export function CommentForm({ postId, parentId, labels }: { postId: number; pare
         body: {
           postId, parentId,
           authorName: fd.get("authorName"), authorEmail: fd.get("authorEmail"),
-          authorUrl: fd.get("authorUrl"), content: fd.get("content"), website2: fd.get("website2"),
+          authorUrl: fd.get("authorUrl"), content: fd.get("content"), website2: fd.get("website2"), extra: extraFields(fd),
         },
       });
       form.reset();
@@ -158,6 +160,7 @@ export function CommentForm({ postId, parentId, labels }: { postId: number; pare
       </p>
       <p><label>{L.website}<input name="authorUrl" type="url" maxLength={200} /></label></p>
       <input name="website2" tabIndex={-1} autoComplete="off" style={{ position: "absolute", left: "-9999px" }} aria-hidden />
+      {fields}
       <p><button type="submit" disabled={state === "sending"}>{state === "sending" ? L.sending : L.submit}</button></p>
       {message && <p className={state === "error" ? "form-error" : "form-success"} role="status">{message}</p>}
     </form>
@@ -276,5 +279,5 @@ export function LanguageSwitcherClient({ languages, current, defaultLocale, labe
   );
 }
 
-export { LoginForm, RegisterForm, ForgotPasswordForm, ResetPasswordForm, LogoutButton, useCurrentUser, AUTH_LABELS, AUTH_PATHS, type AuthLabels, type AuthPaths } from "./auth-forms";
+export { LoginForm, RegisterForm, ForgotPasswordForm, ResetPasswordForm, LogoutButton, useCurrentUser, extraFields, AUTH_LABELS, AUTH_PATHS, type AuthLabels, type AuthPaths } from "./auth-forms";
 export { safeRedirect, type CurrentUser } from "./auth-shared";

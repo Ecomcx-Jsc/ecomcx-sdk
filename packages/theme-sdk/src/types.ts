@@ -182,18 +182,14 @@ export interface SitemapEntry {
 /** Route gốc do plugin cung cấp (vd /news-sitemap.xml): nhận Request, trả Response. Khai báo đường dẫn trong plugin.json → frontend.routes. */
 export type PluginRoute = (req: Request, ctx: { site: Site; path: string }) => Response | Promise<Response>;
 
-export interface FilterMap {
-  /** Sửa metadata của trang (title, description, og…). */
-  "document.metadata": (meta: DocumentMetadata, ctx: { site: Site; data: ResolveResult }) => DocumentMetadata | Promise<DocumentMetadata>;
-  /** Sửa danh sách block trước khi render nội dung bài viết. */
-  "post.blocks": (blocks: Block[], ctx: { site: Site; post?: Post | null }) => Block[] | Promise<Block[]>;
-  /** Sửa nội dung robots.txt (văn bản). */
-  "robots.txt": (content: string, ctx: { site: Site }) => string | Promise<string>;
-  /** Sửa danh sách URL của sitemap.xml. */
-  "sitemap.entries": (entries: SitemapEntry[], ctx: { site: Site }) => SitemapEntry[] | Promise<SitemapEntry[]>;
-}
-
-export type CoreSlotName = "head" | "body.start" | "body.end" | "before.content" | "after.content" | "footer";
+/**
+ * Slot chuẩn. Core: head, body.start, body.end, footer. Theme: before.content, after.content.
+ * Component của SDK: comments.before / comments.after (khu bình luận), comment_form.fields (ô thêm trong form bình luận),
+ * auth.login.fields, auth.register.fields, auth.forgot_password.fields (ô thêm trong form tài khoản, vd captcha).
+ * Ô thêm có name="extra.*" được gửi kèm trong "extra" — backend đọc ở action auth.attempt / filter comment.data.
+ */
+export type CoreSlotName = "head" | "body.start" | "body.end" | "before.content" | "after.content" | "footer"
+  | "comments.before" | "comments.after" | "comment_form.fields" | "auth.login.fields" | "auth.register.fields" | "auth.forgot_password.fields";
 export type SlotName = CoreSlotName | (string & {});
 
 /** Một handler gắn vào Slot, kèm priority (mặc định 10, số nhỏ chạy trước). */
@@ -214,6 +210,8 @@ export interface FilterMap {
   "robots.txt": (content: string, ctx: { site: Site }) => string | Promise<string>;
   /** Sửa danh sách URL của sitemap.xml. */
   "sitemap.entries": (entries: SitemapEntry[], ctx: { site: Site }) => SitemapEntry[] | Promise<SitemapEntry[]>;
+  /** Thêm/bớt class của thẻ <body> (vd "logged-in", "has-promo-bar") — như body_class của WordPress. */
+  "body.class": (classes: string[], ctx: { site: Site }) => string[] | Promise<string[]>;
   /** Cho phép các filter tùy biến bất kỳ của plugin/theme */
   [customFilter: string]: ((val: any, ctx?: any) => any) | undefined;
 }

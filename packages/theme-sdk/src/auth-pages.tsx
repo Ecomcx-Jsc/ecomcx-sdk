@@ -1,5 +1,6 @@
 import { getCurrentUser } from "./auth";
 import { ForgotPasswordForm, LoginForm, LogoutButton, RegisterForm, ResetPasswordForm, type AuthLabels, type AuthPaths } from "./auth-forms";
+import { Slot } from "./components";
 import { getT } from "./i18n";
 import { localeHref } from "./locale";
 import type { TemplateProps } from "./types";
@@ -26,10 +27,10 @@ export default async function AuthPage({ data, site }: TemplateProps) {
         <p className="auth-signed-in">
           {t("auth.signedInAs", { name: user.displayName })} <LogoutButton redirectTo={paths.home}>{L.logout}</LogoutButton>
         </p>
-      ) : name === "register" ? <RegisterForm labels={L} paths={paths} />
-        : name === "forgot-password" ? <ForgotPasswordForm labels={L} paths={paths} />
+      ) : name === "register" ? <RegisterForm labels={L} paths={paths} fields={<Slot name="auth.register.fields" />} />
+        : name === "forgot-password" ? <ForgotPasswordForm labels={L} paths={paths} fields={<Slot name="auth.forgot_password.fields" />} />
         : name === "reset-password" ? <ResetPasswordForm labels={L} paths={paths} />
-        : <LoginForm labels={L} paths={paths} />}
+        : <LoginForm labels={L} paths={paths} fields={<Slot name="auth.login.fields" />} />}
     </main>
   );
 }

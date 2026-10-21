@@ -38,8 +38,9 @@ const cssInject = {
   },
 };
 
-export async function buildAdmin(dir, outFile) {
-  const entry = ["index.tsx", "index.ts", "index.jsx", "index.js"].map((f) => path.join(dir, "admin", "src", f)).find(fs.existsSync);
+/** name: "index" (trang quản trị) hoặc "login" (admin.loginEntry — nạp trên trang đăng nhập, vd ô captcha). */
+export async function buildAdmin(dir, outFile, name = "index") {
+  const entry = [".tsx", ".ts", ".jsx", ".js"].map((ext) => path.join(dir, "admin", "src", name + ext)).find(fs.existsSync);
   if (!entry) return false;
   const esbuild = await import("esbuild");
   const { dir: sdk, ext } = adminSdkFiles();
@@ -108,6 +109,11 @@ export async function pack(dir, { out } = {}) {
         const outFile = path.join(root, manifest.admin.entry);
         fs.mkdirSync(path.dirname(outFile), { recursive: true });
         if (!(await buildAdmin(dir, outFile))) fs.copyFileSync(path.join(dir, manifest.admin.entry), outFile);
+        if (manifest.admin.loginEntry) {
+          const loginOut = path.join(root, manifest.admin.loginEntry);
+          fs.mkdirSync(path.dirname(loginOut), { recursive: true });
+          if (!(await buildAdmin(dir, loginOut, "login"))) fs.copyFileSync(path.join(dir, manifest.admin.loginEntry), loginOut);
+        }
       }
 
       if (manifest.frontend) {

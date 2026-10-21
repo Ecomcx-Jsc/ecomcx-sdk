@@ -81,6 +81,10 @@ export const registerPostBulkAction = (a: import("./types").PostBulkAction) => h
 export const registerPostListFilter = (f: import("./types").PostListFilter) => host().registerPostListFilter?.(f);
 /** Hộp trong trang sửa thành viên / hồ sơ, lưu vào user meta (CMS ≥ 1.2.0). */
 export const registerUserProfileBox = (b: import("./types").UserProfileBox) => host().registerUserProfileBox?.(b);
+/** Cột / nút trên dòng / thao tác hàng loạt cho danh sách người dùng, bình luận, media (list: "users" | "comments" | "media"). */
+export const registerListColumn = (c: import("./types").ListColumn) => host().registerListColumn?.(c);
+export const registerListRowAction = (a: import("./types").ListRowAction) => host().registerListRowAction?.(a);
+export const registerListBulkAction = (a: import("./types").ListBulkAction) => host().registerListBulkAction?.(a);
 export const getPostRowActions = (postType?: string) => (host().getPostRowActions ? host().getPostRowActions(postType) : []);
 
 export const hooks = new Proxy({} as import("./types").AdminHookRegistry, {

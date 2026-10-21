@@ -47,6 +47,7 @@ export function validate(dir) {
     if (!manifest.backend && !manifest.admin && !manifest.frontend) errors.push("Plugin cần ít nhất một phần: backend, admin hoặc frontend");
     if (manifest.backend && !/\.dll$/i.test(manifest.backend.assembly ?? "")) errors.push("backend.assembly phải là đường dẫn .dll, vd backend/MyPlugin.dll");
     if (manifest.admin && !/\.js$/i.test(manifest.admin.entry ?? "")) errors.push("admin.entry phải là file .js đã build, vd admin/index.js");
+    if (manifest.admin?.loginEntry && !/\.js$/i.test(manifest.admin.loginEntry)) errors.push("admin.loginEntry phải là file .js đã build, vd admin/login.js (nguồn: admin/src/login.tsx)");
     if (manifest.frontend && !/\.(tsx?|jsx?)$/.test(manifest.frontend.entry ?? "")) errors.push("frontend.entry phải là .ts/.tsx/.js/.jsx");
     for (const r of manifest.frontend?.routes ?? [])
       if (typeof r !== "string" || !/^\/[a-z0-9._-]+(\/[a-z0-9._-]+)*$/.test(r) || /^\/(api|_next|admin|uploads|extensions|hubs|feed)(\/|$)|^\/(sitemap\.xml|robots\.txt|favicon\.ico)$/.test(r))

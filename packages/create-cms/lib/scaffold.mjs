@@ -155,7 +155,7 @@ export function scaffoldPlugin(name, { backend = true, admin = true, frontend = 
   const root = path.resolve(dir ?? slug);
   if (fs.existsSync(root) && fs.readdirSync(root).length) throw new Error(`Thư mục ${root} đã tồn tại và không rỗng`);
 
-  const manifest = { name, slug, version: "1.0.0", author: "", description: `Plugin ${name}`, requires: { cms: ">=1.4.0 <2.0.0" } };
+  const manifest = { name, slug, version: "1.0.0", author: "", description: `Plugin ${name}`, requires: { cms: ">=1.5.0 <2.0.0" } };
   if (backend) manifest.backend = { assembly: `backend/${cls}.dll`, entry: `${cls}.${cls}Plugin` };
   if (admin) manifest.admin = { entry: "admin/index.js" };
   if (frontend) manifest.frontend = { entry: "frontend/index.tsx" };
@@ -187,7 +187,7 @@ export function scaffoldPlugin(name, { backend = true, admin = true, frontend = 
   </PropertyGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
-    <PackageReference Include="Cms.Plugin.Sdk" Version="1.4.0">
+    <PackageReference Include="Cms.Plugin.Sdk" Version="1.5.0">
       <Private>false</Private>
       <ExcludeAssets>runtime</ExcludeAssets>
     </PackageReference>

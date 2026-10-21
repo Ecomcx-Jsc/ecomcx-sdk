@@ -122,6 +122,42 @@ export interface PostRowAction {
   priority?: number;
 }
 
+/** Danh sách khác (ngoài bài viết) cho plugin mở rộng: người dùng, bình luận, media. */
+export type AdminListName = "users" | "comments" | "media";
+
+/** Cột thêm vào danh sách người dùng / bình luận / media (manage_users_columns… của WordPress). row = một dòng của API admin. */
+export interface ListColumn {
+  list: AdminListName;
+  id: string;
+  title: string;
+  width?: number;
+  align?: "left" | "right" | "center";
+  component: ComponentType<{ row: any }>;
+}
+
+/** Nút trên từng dòng của danh sách người dùng / bình luận / media (user_row_actions, comment_row_actions…). */
+export interface ListRowAction {
+  list: AdminListName;
+  id: string;
+  title: string;
+  icon?: ComponentType<any>;
+  component?: ComponentType<{ row: any; navigate?: (path: string) => void }>;
+  onClick?: (row: any, navigate: (path: string) => void) => void;
+  priority?: number;
+}
+
+/** Thao tác hàng loạt trên danh sách người dùng / bình luận / media. */
+export interface ListBulkAction {
+  list: AdminListName;
+  id: string;
+  title: string;
+  icon?: ComponentType<any>;
+  /** Hỏi lại trước khi chạy ({0} = số mục). */
+  confirm?: string;
+  run(ids: number[]): Promise<void | string>;
+  priority?: number;
+}
+
 /** Thao tác hàng loạt trên danh sách bài (hiện khi chọn nhiều dòng) — bulk_actions của WordPress. */
 export interface PostBulkAction {
   id: string;
@@ -241,6 +277,9 @@ export interface CmsAdmin {
   registerPostBulkAction?(action: PostBulkAction): void;
   registerPostListFilter?(filter: PostListFilter): void;
   registerUserProfileBox?(box: UserProfileBox): void;
+  registerListColumn?(column: ListColumn): void;
+  registerListRowAction?(action: ListRowAction): void;
+  registerListBulkAction?(action: ListBulkAction): void;
   getPostRowActions(postType?: string): Array<PostRowAction>;
   getMetaBoxes?(postType?: string): MetaBox[];
   usePluginUi?(): any;
