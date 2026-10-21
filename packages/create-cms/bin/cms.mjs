@@ -89,7 +89,7 @@ try {
         ? scaffoldTheme(name, { parent: args.parent, dir: args.dir })
         : scaffoldPlugin(name, { backend: !args["no-backend"], admin: !args["no-admin"], frontend: !args["no-frontend"], dir: args.dir });
       console.log(c.green(`✓ Đã tạo ${cmd} ở ${path.relative(process.cwd(), root)}`));
-      console.log(c.dim(`  cd ${path.relative(process.cwd(), root)} && npx create-cms dev`));
+      console.log(c.dim(`  cd ${path.relative(process.cwd(), root)} && npx github:Ecomcx-Jsc/ecomcx-sdk dev`));
       break;
     }
     case "validate":

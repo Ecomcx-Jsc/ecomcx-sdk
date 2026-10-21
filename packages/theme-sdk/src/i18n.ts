@@ -1,3 +1,4 @@
+import { IntlMessageFormat } from "intl-messageformat";
 import { cache } from "react";
 import { getSite } from "./api";
 import { getActiveTheme } from "./runtime";
@@ -49,24 +50,35 @@ export const BUILTIN: Record<string, Record<string, string>> = {
 export type Translator = ((key: string, vars?: Record<string, string | number>) => string) & { locale: string };
 
 /**
- * Hàm dịch chữ cho ngôn ngữ hiện tại (kiểu gettext).
+ * Hàm dịch chữ cho ngôn ngữ hiện tại. Thông điệp theo ICU MessageFormat: biến `{name}`, số nhiều
+ * `{count, plural, one {# comment} other {# comments}}`, chọn `{gender, select, …}`.
  * Thứ tự tra: locales của theme (con → cha) → chữ có sẵn của SDK; ngôn ngữ hiện tại → mặc định → tiếng Anh → chính key.
  */
 export const getT = cache(async (): Promise<Translator> => {
   const site = await getSite();
   const theme = await getActiveTheme(site);
   const order = [...new Set([site.locale, site.defaultLocale, "en"])];
-  const dicts: Array<Record<string, string>> = [];
+  const dicts: Array<{ code: string; dict: Record<string, string> }> = [];
   for (const code of order) {
     for (const t of theme.chain) {
       const loader = t.locales?.[code];
-      if (loader) { try { dicts.push((await loader()).default); } catch { /* bỏ qua */ } }
+      if (loader) { try { dicts.push({ code, dict: (await loader()).default }); } catch { /* bỏ qua */ } }
     }
-    if (BUILTIN[code]) dicts.push(BUILTIN[code]);
+    if (BUILTIN[code]) dicts.push({ code, dict: BUILTIN[code] });
   }
+  const compiled = new Map<string, IntlMessageFormat | null>();
   const t = ((key: string, vars?: Record<string, string | number>) => {
-    let s = key;
-    for (const d of dicts) if (d[key] !== undefined) { s = d[key]; break; }
+    const hit = dicts.find((d) => d.dict[key] !== undefined);
+    if (!hit) return key;
+    const src = hit.dict[key];
+    if (!src.includes("{") && !src.includes("'")) return src;
+    const id = `${hit.code}\0${key}`;
+    if (!compiled.has(id)) {
+      try { compiled.set(id, new IntlMessageFormat(src, hit.code, undefined, { ignoreTag: true })); } catch { compiled.set(id, null); }
+    }
+    const f = compiled.get(id);
+    try { if (f) return String(f.format(vars)); } catch { /* thiếu biến → thay thô như bản cũ */ }
+    let s = src;
     if (vars) for (const [k, v] of Object.entries(vars)) s = s.replaceAll(`{${k}}`, String(v));
     return s;
   }) as Translator;

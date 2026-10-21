@@ -5,6 +5,8 @@ export * from "./types";
 
 export const registerPage = (page: AdminPage) => host().registerPage(page);
 export const registerMetaBox = (box: MetaBox) => host().registerMetaBox(box);
+/** Sidebar riêng trong trình soạn bài, kèm nút trên thanh hành động (CMS cũ chưa hỗ trợ thì bỏ qua). */
+export const registerEditorSidebar = (s: import("./types").EditorSidebar) => host().registerEditorSidebar?.(s);
 export const registerDashboardWidget = (w: DashboardWidget) => host().registerDashboardWidget(w);
 /** Thêm cột vào danh sách bài viết/trang (vd điểm SEO). */
 export const registerPostListColumn = (c: import("./types").PostListColumn) => host().registerPostListColumn(c);
@@ -33,10 +35,20 @@ export const getPluginApi = <T = Record<string, unknown>>(slug: string) => host(
 export const waitForPluginApi = <T = Record<string, unknown>>(slug: string, timeoutMs?: number) =>
   host().plugins ? host().plugins!.wait<T>(slug, timeoutMs) : Promise.resolve(undefined);
 /**
- * Dịch chuỗi giao diện của plugin. Chuỗi gốc là khoá; đăng ký bản dịch trước khi render:
- *   registerTranslations("en", { "Liên hệ": "Contact" });  __("Liên hệ") → "Contact" khi admin dùng tiếng Anh.
+ * Dịch chuỗi giao diện theo khoá (ICU MessageFormat). Bản dịch của plugin đặt trong gói: locales/vi.json, locales/en.json
+ * — CMS tự nạp với namespace = slug plugin (như text domain của WordPress):
+ *   locales/en.json: { "form.title": "Contact", "form.count": "{count, plural, one {# message} other {# messages}}" }
+ *   const t = createT("lien-he");  t("form.title") → "Contact";  t("form.count", { count: 3 }) → "3 messages"
+ * Khoá có ":" là khoá đầy đủ ("core:common.save" — nhãn chung của lõi, "plugin-khac:x").
  */
+export const t = (key: string, values?: Record<string, unknown>) => (host().i18n.t ? host().i18n.t!(key, values) : key);
+/** Hàm dịch gắn sẵn namespace của plugin. */
+export const createT = (namespace: string) => (key: string, values?: Record<string, unknown>) => t(key.includes(":") ? key : `${namespace}:${key}`, values);
+/** Thêm bản dịch bằng mã (ngoài locales/*.json), vd bản dịch tải từ API. */
+export const registerMessages = (namespace: string, locale: string, dict: Record<string, string>) => host().i18n.registerMessages?.(namespace, locale, dict);
+/** @deprecated Chuỗi gốc tiếng Việt làm khoá — dùng t()/createT() với locales/*.json. */
 export const __ = (text: string, ...args: unknown[]) => host().i18n.__(text, ...args);
+/** @deprecated Dùng locales/*.json hoặc registerMessages(). */
 export const registerTranslations = (locale: string, dict: Record<string, string>) => host().i18n.registerTranslations(locale, dict);
 export const adminLocale = () => host().i18n.locale;
 

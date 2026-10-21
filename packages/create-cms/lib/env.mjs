@@ -149,7 +149,7 @@ export async function env(action, args) {
     printInfo(cred, dir);
     return;
   }
-  if (!saved) throw new Error(`Chưa có môi trường ở ${dir} — chạy: npx create-cms env up`);
+  if (!saved) throw new Error(`Chưa có môi trường ở ${dir} — chạy: npx github:Ecomcx-Jsc/ecomcx-sdk env up`);
   if (action === "down") {
     await dc("down", ...(args.purge ? ["-v"] : []));
     if (args.purge) fs.rmSync(dir, { recursive: true, force: true });

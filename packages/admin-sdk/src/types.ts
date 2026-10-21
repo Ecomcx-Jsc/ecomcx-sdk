@@ -69,6 +69,24 @@ export interface MetaBox {
   component: ComponentType<MetaBoxProps>;
 }
 
+/**
+ * Sidebar riêng của plugin trong trình soạn bài (PluginSidebar + PinnedItems của WordPress).
+ * Sidebar chỉ hiện một panel mỗi lúc: "Cài đặt" của core hoặc một sidebar plugin; nút trên thanh hành động để chuyển qua lại.
+ * Panel luôn được giữ mount (chỉ ẩn khi không mở) nên plugin vẫn phân tích/lưu meta khi người dùng không xem.
+ */
+export interface EditorSidebar {
+  id: string;
+  title: string;
+  /** Bỏ trống = mọi post type. */
+  postTypes?: string[];
+  /** Icon cho nút mặc định trên thanh hành động (vd icon lucide). */
+  icon?: ComponentType<{ className?: string }>;
+  /** Nút tự vẽ trên thanh hành động (vd điểm SEO) — thay cho nút icon mặc định. */
+  headerItem?: ComponentType<MetaBoxProps & { active: boolean; toggle(): void }>;
+  priority?: number;
+  component: ComponentType<MetaBoxProps>;
+}
+
 export interface AdminPage {
   /** Khớp với Path khai báo trong IAdminRegistry.AddMenu ở backend, vd "/redirects". */
   path: string;
@@ -212,6 +230,8 @@ export interface CmsAdmin {
   hooks: AdminHookRegistry;
   registerPage(page: AdminPage): void;
   registerMetaBox(box: MetaBox): void;
+  /** Sidebar riêng trong trình soạn bài. */
+  registerEditorSidebar?(sidebar: EditorSidebar): void;
   registerDashboardWidget(widget: DashboardWidget): void;
   registerPostListColumn(column: PostListColumn): void;
   registerTermMetaBox(box: TermMetaBox): void;
@@ -234,8 +254,17 @@ export interface CmsAdmin {
     get<T = Record<string, unknown>>(slug: string): T | undefined;
     wait<T = Record<string, unknown>>(slug: string, timeoutMs?: number): Promise<T | undefined>;
   };
-  /** Dịch giao diện: ngôn ngữ admin hiện tại ("vi" | "en"), hàm dịch và bổ sung bản dịch của plugin. */
-  i18n: { locale: string; __(text: string, ...args: unknown[]): string; registerTranslations(locale: string, dict: Record<string, string>): void };
+  /** Dịch giao diện: ngôn ngữ admin hiện tại ("vi" | "en"), hàm dịch theo khoá (ICU) và bổ sung bản dịch của plugin. */
+  i18n: {
+    locale: string;
+    /** "slug:khoá" của plugin, hoặc khoá của lõi. Thiếu bản dịch: ngôn ngữ đang chọn → en → vi → hiện khoá. */
+    t?(key: string, values?: Record<string, unknown>): string;
+    registerMessages?(namespace: string, locale: string, dict: Record<string, string>): void;
+    /** @deprecated Chuỗi gốc làm khoá — dùng t(). */
+    __(text: string, ...args: unknown[]): string;
+    /** @deprecated Dùng registerMessages / locales/*.json. */
+    registerTranslations(locale: string, dict: Record<string, string>): void;
+  };
   /** Trình soạn nội dung (@cms/editor): thêm khối/lệnh chèn; dùng chung TipTap của admin. */
   editor: {
     register(pack: EditorExtensionPack): void;

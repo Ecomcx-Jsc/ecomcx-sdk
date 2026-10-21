@@ -145,7 +145,7 @@ export default definePlugin({
   },
 });
 `);
-  write(path.join(root, "README.md"), `# ${name}\n\nTheme cho CMS.\n\n- \`npx create-cms validate\` — kiểm tra theme\n- \`npx create-cms pack\` — đóng gói thành zip để upload trong Giao diện › Thêm mới\n- \`npx create-cms dev --password ...\` — tự đóng gói và cài lên CMS local mỗi khi sửa file\n`);
+  write(path.join(root, "README.md"), `# ${name}\n\nTheme cho CMS.\n\n- \`npx github:Ecomcx-Jsc/ecomcx-sdk validate\` — kiểm tra theme\n- \`npx github:Ecomcx-Jsc/ecomcx-sdk pack\` — đóng gói thành zip để upload trong Giao diện › Thêm mới\n- \`npx github:Ecomcx-Jsc/ecomcx-sdk dev --password ...\` — tự đóng gói và cài lên CMS local mỗi khi sửa file\n`);
   return { root, slug };
 }
 
@@ -155,11 +155,20 @@ export function scaffoldPlugin(name, { backend = true, admin = true, frontend = 
   const root = path.resolve(dir ?? slug);
   if (fs.existsSync(root) && fs.readdirSync(root).length) throw new Error(`Thư mục ${root} đã tồn tại và không rỗng`);
 
-  const manifest = { name, slug, version: "1.0.0", author: "", description: `Plugin ${name}`, requires: { cms: ">=1.2.0 <2.0.0" } };
+  const manifest = { name, slug, version: "1.0.0", author: "", description: `Plugin ${name}`, requires: { cms: ">=1.4.0 <2.0.0" } };
   if (backend) manifest.backend = { assembly: `backend/${cls}.dll`, entry: `${cls}.${cls}Plugin` };
   if (admin) manifest.admin = { entry: "admin/index.js" };
   if (frontend) manifest.frontend = { entry: "frontend/index.tsx" };
   write(path.join(root, "plugin.json"), JSON.stringify(manifest, null, 2) + "\n");
+
+  // Bản dịch theo khoá (ICU MessageFormat), namespace = slug: admin dùng createT("${slug}"), backend dùng Text.T("${slug}:khoá")
+  const messages = {
+    vi: { "menu.title": name, "page.description": "Trang quản trị của plugin.", "settings.title": "Cài đặt", "settings.greeting": "Lời chào",
+      "settings.saved": "Đã lưu", "settings.save": "Lưu", "metabox.note": "Ghi chú nội bộ", "metabox.title": name },
+    en: { "menu.title": name, "page.description": "The plugin's admin page.", "settings.title": "Settings", "settings.greeting": "Greeting",
+      "settings.saved": "Saved", "settings.save": "Save", "metabox.note": "Internal note", "metabox.title": name },
+  };
+  for (const [code, dict] of Object.entries(messages)) write(path.join(root, "locales", `${code}.json`), JSON.stringify(dict, null, 2) + "\n");
 
   if (backend) {
     const repo = findCmsRepo(root);
@@ -178,7 +187,7 @@ export function scaffoldPlugin(name, { backend = true, admin = true, frontend = 
   </PropertyGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
-    <PackageReference Include="Cms.Plugin.Sdk" Version="1.2.0">
+    <PackageReference Include="Cms.Plugin.Sdk" Version="1.4.0">
       <Private>false</Private>
       <ExcludeAssets>runtime</ExcludeAssets>
     </PackageReference>
@@ -199,6 +208,7 @@ using System.Data.Common;
 using Cms.Plugin.Sdk;
 using Cms.Plugin.Sdk.Contracts;
 using Cms.Plugin.Sdk.Hooks;
+using Cms.Plugin.Sdk.Localization;
 using Cms.Plugin.Sdk.Registry;
 using Cms.Plugin.Sdk.Services;
 using Microsoft.AspNetCore.Builder;
@@ -234,11 +244,11 @@ public sealed class ${cls}Plugin : CmsPlugin
             return post;
         });
 
-        // Trang settings tự sinh trong admin
-        ctx.Settings.Register("general", "${name}", [
-            new FieldDefinition("greeting", "text", "Lời chào", "Xin chào!"),
+        // Trang settings tự sinh trong admin. Nhãn là khoá dịch trong locales/*.json (CMS dịch theo ngôn ngữ người dùng)
+        ctx.Settings.Register("general", Text.T("${slug}:menu.title"), [
+            new FieldDefinition("greeting", "text", Text.T("${slug}:settings.greeting"), "Xin chào!"),
         ]);
-        ctx.Admin.AddMenu(new AdminMenuItem("${slug}", "${name}", "/${slug}", "manage_options", "puzzle"));
+        ctx.Admin.AddMenu(new AdminMenuItem("${slug}", Text.T("${slug}:menu.title"), "/${slug}", "manage_options", "puzzle"));
 
         // Endpoint: GET /api/plugins/${slug}/hello
         ctx.Endpoints.Map(r => r.MapGet("/hello", async (IPluginSettings settings) =>
@@ -251,7 +261,10 @@ public sealed class ${cls}Plugin : CmsPlugin
   if (admin) {
     write(path.join(root, "admin", "src", "index.tsx"), `
 import { useState } from "react";
-import { Button, Card, Field, Input, PageHeader, api, notify, registerMetaBox, registerPage, useApi } from "@cms/admin-sdk";
+import { Button, Card, Field, Input, PageHeader, api, createT, notify, registerMetaBox, registerPage, useApi } from "@cms/admin-sdk";
+
+/** Dịch theo khoá trong locales/*.json của plugin (namespace "${slug}"). */
+const t = createT("${slug}");
 
 /** Trang admin — đường dẫn khớp với ctx.Admin.AddMenu(... "/${slug}" ...) ở backend. */
 function SettingsPage() {
@@ -260,29 +273,29 @@ function SettingsPage() {
   const value = greeting ?? data?.greeting ?? "";
   return (
     <>
-      <PageHeader title="${name}" description="Trang quản trị của plugin." />
-      <Card title="Cài đặt">
-        <Field label="Lời chào"><Input value={value} onChange={(e) => setGreeting(e.target.value)} /></Field>
+      <PageHeader title={t("menu.title")} description={t("page.description")} />
+      <Card title={t("settings.title")}>
+        <Field label={t("settings.greeting")}><Input value={value} onChange={(e) => setGreeting(e.target.value)} /></Field>
         <Button variant="primary" onClick={async () => {
           await api.put("/admin/settings/plugins/${slug}/general", { greeting: value });
-          notify.success("Đã lưu");
+          notify.success(t("settings.saved"));
           reload();
-        }}>Lưu</Button>
+        }}>{t("settings.save")}</Button>
       </Card>
     </>
   );
 }
 
-registerPage({ path: "/${slug}", title: "${name}", component: SettingsPage });
+registerPage({ path: "/${slug}", title: t("menu.title"), component: SettingsPage });
 
 /** Meta box trong trang sửa bài — giá trị lưu vào post.meta khi bấm Lưu. */
 registerMetaBox({
   id: "${slug}-note",
-  title: "${name}",
+  title: t("metabox.title"),
   postTypes: ["post"],
   context: "side",
   component: ({ meta, setMeta }) => (
-    <Field label="Ghi chú nội bộ">
+    <Field label={t("metabox.note")}>
       <Input value={meta["${slug}_note"] ?? ""} onChange={(e) => setMeta("${slug}_note", e.target.value)} />
     </Field>
   ),
@@ -307,6 +320,6 @@ export default definePlugin({
 `);
   }
 
-  write(path.join(root, "README.md"), `# ${name}\n\nPlugin cho CMS.\n\n- \`backend/\` — C# (Cms.Plugin.Sdk): hook, filter, migration, endpoint, settings\n- \`admin/src/\` — React (@cms/admin-sdk): trang quản trị, meta box\n- \`frontend/\` — React (@cms/theme-sdk): shortcode, widget, slot, filter\n\nLệnh:\n\n- \`npx create-cms validate\`\n- \`npx create-cms pack\` → \`dist/${slug}-1.0.0.zip\`\n- \`npx create-cms deploy --password ... --activate\`\n- \`npx create-cms dev --password ...\` (tự deploy khi sửa file)\n`);
+  write(path.join(root, "README.md"), `# ${name}\n\nPlugin cho CMS.\n\n- \`backend/\` — C# (Cms.Plugin.Sdk): hook, filter, migration, endpoint, settings\n- \`admin/src/\` — React (@cms/admin-sdk): trang quản trị, meta box\n- \`frontend/\` — React (@cms/theme-sdk): shortcode, widget, slot, filter\n- \`locales/\` — bản dịch theo khoá (ICU), namespace \`${slug}\`: \`createT("${slug}")\` ở admin, \`Text.T("${slug}:khoá")\` ở backend\n\nLệnh:\n\n- \`npx github:Ecomcx-Jsc/ecomcx-sdk validate\`\n- \`npx github:Ecomcx-Jsc/ecomcx-sdk pack\` → \`dist/${slug}-1.0.0.zip\`\n- \`npx github:Ecomcx-Jsc/ecomcx-sdk deploy --password ... --activate\`\n- \`npx github:Ecomcx-Jsc/ecomcx-sdk dev --password ...\` (tự deploy khi sửa file)\n`);
   return { root, slug };
 }
