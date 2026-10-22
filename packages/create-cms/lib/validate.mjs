@@ -44,7 +44,19 @@ export function validate(dir) {
     if (manifest.screenshot && !fs.existsSync(path.join(dir, manifest.screenshot))) warnings.push(`Không thấy ảnh ${manifest.screenshot}`);
     if (fs.existsSync(path.join(dir, "node_modules"))) warnings.push("node_modules sẽ bị loại khỏi gói");
   } else {
-    if (!manifest.backend && !manifest.admin && !manifest.frontend) errors.push("Plugin cần ít nhất một phần: backend, admin hoặc frontend");
+    const declared = ["collections", "settings", "postTypes", "taxonomies", "postStatuses", "capabilities", "menus"].some((k) => manifest[k] && Object.keys(manifest[k]).length);
+    if (!manifest.backend && !manifest.admin && !manifest.frontend && !declared) errors.push("Plugin cần ít nhất một phần: backend, admin, frontend hoặc khai báo (collections, settings, postTypes…)");
+    for (const [name, c] of Object.entries(manifest.collections ?? {})) {
+      if (!/^[a-z][a-z0-9]*(_[a-z0-9]+)*$/.test(name)) errors.push(`collections: tên bảng không hợp lệ: ${name}`);
+      const types = ["text", "textarea", "email", "tel", "url", "integer", "number", "boolean", "date", "datetime", "time", "select"];
+      for (const f of c.fields ?? []) {
+        if (!/^[a-z][a-zA-Z0-9]{0,40}$/.test(f.key ?? "") || ["id", "createdAt", "updatedAt"].includes(f.key)) errors.push(`collections.${name}: tên trường không hợp lệ: ${f.key}`);
+        if (!types.includes(f.type ?? "text")) errors.push(`collections.${name}.${f.key}: kiểu "${f.type}" không hợp lệ (${types.join(", ")})`);
+        if (f.type === "select" && !f.options?.length) errors.push(`collections.${name}.${f.key}: select cần options`);
+      }
+      if (!(c.fields ?? []).length) errors.push(`collections.${name}: cần ít nhất một trường`);
+    }
+    if (declared && !/>=\s*1\.([7-9]|\d\d)/.test(manifest.requires?.cms ?? "")) warnings.push('khai báo trong plugin.json cần CMS ≥ 1.7.0 — nên ghi "requires": { "cms": ">=1.7.0" }');
     const sources = backendSources(manifest);
     if (sources) {
       for (const s of sources) if (!/^(?!\/)(?!.*\.\.)[A-Za-z0-9_\-./*]+\.cs$/.test(s)) errors.push(`backend: đường dẫn mã nguồn không hợp lệ: ${s}`);
