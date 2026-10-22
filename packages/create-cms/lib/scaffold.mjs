@@ -157,7 +157,7 @@ export default definePlugin({
  * Plugin một file C# (CMS ≥ 1.7.0 tự biên dịch khi cài — không cần .NET SDK, csproj, NuGet):
  * bảng dữ liệu EF + trang quản trị tự sinh + form trên website ([cms-form]) + hook.
  */
-export function scaffoldSimplePlugin(name, { dir } = {}) {
+export function scaffoldSimplePlugin(name, { dir, tests = false } = {}) {
   const slug = slugify(name);
   const cls = pascal(name) || "MyPlugin";
   const root = path.resolve(dir ?? slug);
@@ -206,7 +206,60 @@ Plugin một file — CMS tự biên dịch \`${cls}.cs\` khi cài (CMS ≥ 1.7.
 - Trang quản trị: menu **${name}** · Form trên website: \`[cms-form plugin="${slug}" table="entries"]\`
 - Gợi ý code trong VS Code (không bắt buộc): cài .NET SDK + gói \`Cms.Plugin.Sdk\`
 `);
+  if (tests) scaffoldTests(root, cls, slug);
   return { root, slug };
+}
+
+/** Dự án test xUnit dùng Cms.Plugin.Testing — chạy bằng `create-cms test` (cần .NET SDK). */
+function scaffoldTests(root, cls, slug) {
+  write(path.join(root, "tests", `${cls}.Tests.csproj`), `<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Cms.Plugin.Testing" Version="1.7.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+</Project>
+`);
+  write(path.join(root, "tests", `${cls}Tests.cs`), `using System.Net;
+using System.Net.Http.Json;
+using Cms.Plugin.Testing;
+using Xunit;
+
+/// Chạy: create-cms env up (một lần) rồi create-cms test — gói plugin được cài + bật trên CMS thử.
+public class ${cls}Tests : PluginTest
+{
+    [Fact]
+    public async Task Khach_gui_form_duoc_luu()
+    {
+        var email = $"t{Guid.NewGuid():N}@test.vn";
+        var res = await Anonymous.PostAsJsonAsync(Anonymous.Plugin("/data/entries"), new { name = "An", email, message = "Xin chào", done = true });
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+        var row = Assert.Single(await Rows("entries", search: email));
+        Assert.False(row["done"]!.GetValue<bool>());   // [AdminOnly]: khách không đặt được
+    }
+
+    [Fact]
+    public async Task Du_lieu_sai_bi_tu_choi()
+    {
+        var res = await Anonymous.PostAsJsonAsync(Anonymous.Plugin("/data/entries"), new { name = "", email = "sai" });
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, res.StatusCode);
+    }
+
+    [Fact]
+    public async Task Tac_gia_khong_xem_duoc_du_lieu()
+    {
+        var author = await As("author");
+        Assert.Equal(HttpStatusCode.Forbidden, (await author.GetAsync($"/api/admin/plugin-data/{Slug}/entries")).StatusCode);
+    }
+}
+`);
 }
 
 export function scaffoldPlugin(name, { backend = true, admin = true, frontend = true, dir } = {}) {

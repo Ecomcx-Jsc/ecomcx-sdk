@@ -19,8 +19,9 @@ import { env, findEnv } from "../lib/env.mjs";
 const HELP = `${c.bold("create-cms")} — công cụ viết theme/plugin cho CMS
 
   ${c.cyan('theme "Tên"')} [--parent default]      tạo theme (child theme với --parent)
-  ${c.cyan('plugin "Tên"')} [--simple] [--no-backend|--no-admin|--no-frontend]   tạo plugin (--simple: một file C#, CMS tự biên dịch)
+  ${c.cyan('plugin "Tên"')} [--simple] [--tests] [--no-backend|--no-admin|--no-frontend]   tạo plugin (--simple: một file C#, CMS tự biên dịch)
   ${c.cyan("validate")} [thư-mục]                  kiểm tra theme.json / plugin.json
+  ${c.cyan("test")} [thư-mục]                      đóng gói + chạy test xUnit trong tests/ trên CMS thử (Cms.Plugin.Testing)
   ${c.cyan("check")} [thư-mục]                     chạy thử trên CMS: manifest, biên dịch, quét bảo mật (như khi cài / nộp Store)
   ${c.cyan("pack")} [thư-mục] [--out dist]         đóng gói → dist/<slug>-<version>.zip
   ${c.cyan("deploy")} [thư-mục] [--activate]       đóng gói + cài lên CMS (--url, --user, --password)
@@ -94,7 +95,7 @@ try {
       if (!name) throw new Error(`Thiếu tên: create-cms ${cmd} "Tên ${cmd}"`);
       const { root } = cmd === "theme"
         ? scaffoldTheme(name, { parent: args.parent, dir: args.dir })
-        : args.simple ? scaffoldSimplePlugin(name, { dir: args.dir })
+        : args.simple ? scaffoldSimplePlugin(name, { dir: args.dir, tests: !!args.tests })
         : scaffoldPlugin(name, { backend: !args["no-backend"], admin: !args["no-admin"], frontend: !args["no-frontend"], dir: args.dir });
       console.log(c.green(`✓ Đã tạo ${cmd} ở ${path.relative(process.cwd(), root)}`));
       console.log(c.dim(`  cd ${path.relative(process.cwd(), root)} && npx github:Ecomcx-Jsc/ecomcx-sdk dev`));
@@ -109,6 +110,20 @@ try {
     case "deploy":
       await deploy(await packAndReport(dir), connection());
       break;
+    case "test": {
+      // Đóng gói → chạy dotnet test cho tests/*.csproj (Cms.Plugin.Testing cài gói lên CMS thử một lần rồi chạy test)
+      const testsDir = path.join(dir, "tests");
+      if (!fs.existsSync(testsDir) || !fs.readdirSync(testsDir).some((f) => f.endsWith(".csproj")))
+        throw new Error("Không thấy tests/*.csproj — tạo bằng: create-cms plugin \"Tên\" --tests (hoặc xem tài liệu Cms.Plugin.Testing)");
+      const pkg = await packAndReport(dir);
+      const conn = connection();
+      const env = { ...process.env, CMS_TEST_PACKAGE: path.resolve(pkg.zipPath), CMS_TEST_SLUG: pkg.manifest.slug,
+        ...(conn.url ? { CMS_URL: conn.url } : {}), ...(conn.user ? { CMS_USER: conn.user } : {}), ...(conn.password ? { CMS_PASSWORD: conn.password } : {}) };
+      const { spawnSync } = await import("node:child_process");
+      const r = spawnSync("dotnet", ["test", testsDir, "--nologo"], { stdio: "inherit", env });
+      if (r.status !== 0) process.exitCode = r.status ?? 1;
+      break;
+    }
     case "check":
       if (!(await check(await packAndReport(dir), connection()))) process.exitCode = 1;
       break;
