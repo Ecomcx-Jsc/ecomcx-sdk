@@ -1,0 +1,48 @@
+import fs from "node:fs";
+import path from "node:path";
+import { c, readJson, run } from "./util.mjs";
+
+const RELEASES = "https://github.com/Ecomcx-Jsc/ecomcx-sdk/releases";
+const SDK = { "@cms/theme-sdk": "cms-theme-sdk", "@cms/admin-sdk": "cms-admin-sdk" };
+const latestUrl = (name) => `${RELEASES}/latest/download/${SDK[name]}.tgz`;
+
+/**
+ * Đưa project theme/plugin lên SDK mới nhất: package.json trỏ link "latest" (kể cả project cũ ghim số phiên bản),
+ * bỏ bản đang cài khỏi node_modules + package-lock.json rồi cài lại (--prefer-online: không dùng bản trong cache —
+ * cùng một link "latest" mà nội dung đã đổi). Website không phụ thuộc bản này: CMS build theme/plugin bằng SDK của chính nó;
+ * bản trong project dùng cho gợi ý code, kiểm tra kiểu và `pack`.
+ */
+export async function upgrade(dir) {
+  const pkgFile = path.join(dir, "package.json");
+  const pkg = readJson(pkgFile);
+  if (!pkg) throw new Error(`Không thấy package.json ở ${dir}`);
+  const found = [];
+  for (const section of ["dependencies", "devDependencies"])
+    for (const name of Object.keys(SDK))
+      if (pkg[section]?.[name] !== undefined) {
+        const before = pkg[section][name];
+        pkg[section][name] = latestUrl(name);
+        found.push({ name, before, installed: readJson(path.join(dir, "node_modules", ...name.split("/"), "package.json"))?.version ?? null });
+      }
+  if (!found.length) { console.log(c.dim("  Project không dùng @cms/theme-sdk hay @cms/admin-sdk — không có gì để nâng.")); return { upgraded: [] }; }
+  fs.writeFileSync(pkgFile, JSON.stringify(pkg, null, 2) + "\n");
+
+  // Gỡ bản cũ khỏi lockfile + node_modules: npm giữ bản theo lockfile/cache nếu link không đổi
+  const lockFile = path.join(dir, "package-lock.json");
+  const lock = readJson(lockFile);
+  if (lock?.packages) {
+    for (const { name } of found) {
+      delete lock.packages[`node_modules/${name}`];
+      if (lock.packages[""]?.dependencies?.[name]) lock.packages[""].dependencies[name] = latestUrl(name);
+      if (lock.packages[""]?.devDependencies?.[name]) lock.packages[""].devDependencies[name] = latestUrl(name);
+    }
+    fs.writeFileSync(lockFile, JSON.stringify(lock, null, 2) + "\n");
+  }
+  for (const { name } of found) fs.rmSync(path.join(dir, "node_modules", ...name.split("/")), { recursive: true, force: true });
+
+  console.log(c.cyan("• Cài SDK mới nhất…"));
+  await run("npm", ["install", "--prefer-online", "--no-audit", "--no-fund", "--loglevel=error"], { cwd: dir, quiet: true, shell: process.platform === "win32" });
+  const upgraded = found.map((f) => ({ ...f, now: readJson(path.join(dir, "node_modules", ...f.name.split("/"), "package.json"))?.version ?? null }));
+  for (const u of upgraded) console.log(`  ${u.name.padEnd(16)} ${u.installed ?? "?"} → ${c.green(u.now ?? "?")}`);
+  return { upgraded };
+}

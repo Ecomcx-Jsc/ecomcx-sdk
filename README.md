@@ -31,6 +31,9 @@ npx github:Ecomcx-Jsc/ecomcx-sdk plugin "Tên Plugin" --project
 # Tạo theme mới
 npx github:Ecomcx-Jsc/ecomcx-sdk theme "Tên Theme"
 
+# Project tạo từ trước: lên SDK mới nhất (theme-sdk / admin-sdk) rồi kiểm tra lại
+npx github:Ecomcx-Jsc/ecomcx-sdk upgrade
+
 # Đóng gói plugin / theme thành file .zip
 npx github:Ecomcx-Jsc/ecomcx-sdk pack <đường-dẫn-thư-mục>
 ```

@@ -3,6 +3,7 @@
 //   create-cms theme "Tên" [--parent default] [--dir x]
 //   create-cms plugin "Tên" [--admin] [--frontend] [--project] [--no-backend] [--tests] [--dir x]
 //   create-cms validate [thư-mục]
+//   create-cms upgrade [thư-mục]
 //   create-cms pack [thư-mục] [--out dist]
 //   create-cms deploy [thư-mục] [--url …] [--user …] [--password …] [--activate]
 //   create-cms dev [thư-mục] [--url …] [--user …] [--password …]   (tự đóng gói + cài lại khi sửa file)
@@ -12,6 +13,7 @@ import path from "node:path";
 import { c, parseArgs } from "../lib/util.mjs";
 import { scaffoldPlugin, scaffoldTheme } from "../lib/scaffold.mjs";
 import { validate } from "../lib/validate.mjs";
+import { upgrade } from "../lib/upgrade.mjs";
 import { pack } from "../lib/pack.mjs";
 import { check, deploy } from "../lib/deploy.mjs";
 import { env, findEnv } from "../lib/env.mjs";
@@ -22,6 +24,7 @@ const HELP = `${c.bold("create-cms")} — công cụ viết theme/plugin cho CMS
   ${c.cyan('plugin "Tên"')} [--admin] [--frontend] [--tests]   tạo plugin: plugin.json + một file C# (CMS tự biên dịch)
                                       --admin / --frontend: thêm giao diện React riêng · --project: dự án csproj · --no-backend
   ${c.cyan("validate")} [thư-mục]                  kiểm tra theme.json / plugin.json
+  ${c.cyan("upgrade")} [thư-mục]                   đưa project theme/plugin lên SDK mới nhất (@cms/theme-sdk, @cms/admin-sdk) rồi kiểm tra lại
   ${c.cyan("test")} [thư-mục]                      đóng gói + chạy test xUnit trong tests/ trên CMS thử (Cms.Plugin.Testing)
   ${c.cyan("check")} [thư-mục]                     chạy thử trên CMS: manifest, biên dịch, quét bảo mật (như khi cài / nộp Store)
   ${c.cyan("pack")} [thư-mục] [--out dist]         đóng gói → dist/<slug>-<version>.zip
@@ -103,6 +106,11 @@ try {
     }
     case "validate":
       if (!report(validate(dir), dir)) process.exit(1);
+      break;
+    case "upgrade":
+      // Project tạo từ trước: lên SDK mới nhất rồi kiểm tra lại (validate báo API cũ / khai báo cần CMS mới hơn)
+      await upgrade(dir);
+      if (fs.existsSync(path.join(dir, "theme.json")) || fs.existsSync(path.join(dir, "plugin.json"))) report(validate(dir), dir);
       break;
     case "pack":
       await packAndReport(dir);
