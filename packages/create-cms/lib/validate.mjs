@@ -78,6 +78,7 @@ export function validate(dir) {
     if (manifest.frontend && !fs.existsSync(path.join(dir, manifest.frontend.entry))) errors.push(`Không thấy ${manifest.frontend.entry}`);
     if (manifest.admin && !fs.existsSync(path.join(dir, "admin", "src")) && !fs.existsSync(path.join(dir, manifest.admin.entry)))
       errors.push("Không thấy admin/src/index.tsx (source) hoặc bundle admin đã build");
+    for (const w of checkSources(dir, manifest)) warnings.push(w);
     const legacy = findLegacyCalls(path.join(dir, "admin", "src"));
     if (legacy.length) warnings.push(`__("…") kiểu cũ ở ${legacy.slice(0, 3).join(", ")}${legacy.length > 3 ? ` (+${legacy.length - 3})` : ""} — dùng createT("${manifest.slug}") với locales/*.json`);
     if (manifest.backend && !sources && !(fs.existsSync(path.join(dir, "backend")) && fs.readdirSync(path.join(dir, "backend")).some((f) => f.endsWith(".csproj"))) && !fs.existsSync(path.join(dir, manifest.backend.assembly)))
@@ -155,6 +156,40 @@ function checkLocales(dir, errors, warnings) {
     if (vars.size > 1) errors.push(`locales: biến của "${key}" lệch giữa các ngôn ngữ (${codes.filter((c) => key in dicts[c]).map((c) => `${c}: {${dicts[c][key]}}`).join(" · ")})`);
   }
   return dicts;
+}
+
+/**
+ * API đã đánh dấu bỏ (deprecated) — hợp đồng công khai (docs/public-contract.md của CMS): còn chạy ít nhất tới bản major kế tiếp,
+ * `validate` cảnh báo để người viết plugin/theme chuyển trước. Bỏ API nào thì thêm một dòng ở đây (since = bản CMS/SDK bắt đầu cảnh báo).
+ */
+const DEPRECATIONS = [
+  { re: /(?<![\w$.])registerTranslations\(/g, since: "1.4.0", message: "registerTranslations() đã cũ — dùng locales/*.json + createT(slug)" },
+];
+
+/** Mã nguồn của gói (bỏ node_modules, thư mục build). */
+function sourceFiles(dir) {
+  const out = [];
+  (function walk(d) {
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      if (e.name === "node_modules" || e.name === "dist" || e.name === ".next" || e.name.startsWith(".")) continue;
+      const p = path.join(d, e.name);
+      if (e.isDirectory()) walk(p); else if (/\.(tsx?|jsx?|mjs)$/.test(e.name)) out.push(p);
+    }
+  })(dir);
+  return out;
+}
+
+/** Cảnh báo từ mã nguồn: API đã bỏ, tên khối defineBlock không theo dạng "slug/tên" (tên không có "/" dành cho khối lõi). */
+function checkSources(dir, manifest) {
+  const warnings = [];
+  for (const file of sourceFiles(dir)) {
+    const code = fs.readFileSync(file, "utf8");
+    const at = (i) => `${path.relative(dir, file)}:${code.slice(0, i).split("\n").length}`;
+    for (const d of DEPRECATIONS) for (const m of code.matchAll(d.re)) warnings.push(`${at(m.index)}: ${d.message} (đã cũ từ ${d.since}, bỏ ở bản major kế tiếp)`);
+    for (const m of code.matchAll(/defineBlock\(\s*\{[^]*?\bname:\s*["'`]([^"'`]+)["'`]/g))
+      if (!m[1].startsWith(`${manifest.slug}/`)) warnings.push(`${at(m.index)}: tên khối "${m[1]}" nên là "${manifest.slug}/${m[1].split("/").pop()}" — tên không có "/" dành cho khối lõi của CMS (vd callout, columns), dễ trùng ở bản sau`);
+  }
+  return warnings;
 }
 
 function findLegacyCalls(srcDir) {
