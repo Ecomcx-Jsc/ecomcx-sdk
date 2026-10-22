@@ -1,6 +1,6 @@
 {
   "name": "ecomcx-sdk",
-  "version": "1.6.2",
+  "version": "1.6.3",
   "description": "Ecomcx Nexus SDK - Developer Tools, CLI and Libraries for Theme & Plugin Development",
   "type": "module",
   "bin": {

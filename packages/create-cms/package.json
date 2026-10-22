@@ -1,6 +1,6 @@
 {
   "name": "create-cms",
-  "version": "1.6.2",
+  "version": "1.6.3",
   "description": "CLI tạo, kiểm tra, đóng gói và triển khai theme/plugin cho CMS",
   "type": "module",
   "bin": {

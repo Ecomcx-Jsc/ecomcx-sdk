@@ -8,6 +8,7 @@
 // Tài khoản được lưu ở .cms-env/credentials.json → `create-cms deploy/dev` tự dùng, không cần --password.
 import crypto from "node:crypto";
 import fs from "node:fs";
+import net from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { c, readJson, run, write } from "./util.mjs";
@@ -98,6 +99,14 @@ ${o.buildDir ? `    build: { context: ${JSON.stringify(o.buildDir)}, dockerfile:
 volumes: { pgdata: {}, storage: {}, secrets: {} }
 `;
 
+/** Cổng còn trống trên máy (Docker sẽ báo "port is already allocated" ở bước cuối, sau khi đã tạo container). */
+function portFree(port) {
+  return new Promise((resolve) => {
+    const srv = net.createServer().once("error", () => resolve(false)).once("listening", () => srv.close(() => resolve(true)));
+    srv.listen(port, "0.0.0.0");
+  });
+}
+
 async function waitFor(url, seconds) {
   const until = Date.now() + seconds * 1000;
   while (Date.now() < until) {
@@ -122,6 +131,8 @@ export async function env(action, args) {
     const dev = Boolean(args.dev ?? saved?.dev);
     const buildDir = args.build ? path.resolve(args.build) : saved?.buildDir;
     const mounts = dev ? devMounts(args) : [];
+    // Môi trường đang chạy dùng lại cổng của nó; môi trường mới thì cổng phải trống
+    if (!saved && !(await portFree(port))) throw new Error(`Cổng ${port} đang được dùng — chọn cổng khác: create-cms env up --port ${port + 1}`);
     write(path.join(dir, "docker-compose.yml"), compose({ project, port, url, apiImage, builderImage, dev, buildDir, mounts }));
     write(path.join(dir, "Caddyfile"), asset("Caddyfile"));
     write(path.join(dir, "init-secrets.sh"), asset("init-secrets.sh"));
@@ -144,7 +155,12 @@ export async function env(action, args) {
           + `  Có mã nguồn CMS: create-cms env up --build <thư-mục-mã-nguồn>\n  Hoặc chỉ định image khác: --api-image … --builder-image …\n  Chi tiết: ${e.message.split("\n").slice(-2).join(" ")}`);
       }
     }
-    await dc("up", "-d");
+    try { await dc("up", "-d"); }
+    catch (e) {
+      // Lần chạy đầu hỏng giữa chừng: gỡ container vừa tạo, không để lại stack mồ côi (chưa có credentials.json để env down)
+      if (!saved) await dc("down", "-v", "--remove-orphans").catch(() => {});
+      throw e;
+    }
     if (!(await waitFor(`${url}/api/health`, 240))) throw new Error(`CMS chưa phản hồi ở ${url} — xem log: docker compose -f ${path.relative(process.cwd(), dir)}/docker-compose.yml logs api`);
 
     // Lần đầu website được build (1–2 phút) — chờ xong để mở ra là dùng được ngay
@@ -186,7 +202,9 @@ export async function env(action, args) {
     printInfo(cred, dir);
     return;
   }
-  if (!saved) throw new Error(`Chưa có môi trường ở ${dir} — chạy: npx github:Ecomcx-Jsc/ecomcx-sdk env up`);
+  // env up hỏng trước khi lưu tài khoản: vẫn cho env down dọn theo docker-compose.yml đã ghi
+  if (!saved && !(action === "down" && fs.existsSync(path.join(dir, "docker-compose.yml"))))
+    throw new Error(`Chưa có môi trường ở ${dir} — chạy: npx github:Ecomcx-Jsc/ecomcx-sdk env up`);
   if (action === "down") {
     await dc("down", ...(args.purge ? ["-v"] : []));
     if (args.purge) fs.rmSync(dir, { recursive: true, force: true });
