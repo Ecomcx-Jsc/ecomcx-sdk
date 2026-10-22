@@ -24,8 +24,9 @@ export interface Term {
 }
 
 /** Một block nội dung. Hiện tại core có: richtext (TipTap JSON) và html. */
-export interface Block { id?: string; type: string; data: any }
-export interface PostContentDoc { version: number; blocks: Block[] }
+/** Định dạng nội dung của CMS — xem @cms/content. */
+export type { Block, ContentDoc as PostContentDoc, RichNode, RichMark } from "@cms/content";
+import type { Block, ContentDoc as PostContentDoc } from "@cms/content";
 
 export interface TranslationRef { locale: string; id: number; title: string; status: string; link: string }
 
@@ -149,7 +150,11 @@ export type PluginLoader = Loader<PluginDefinition>;
 export interface ShortcodeProps { attrs: Record<string, string>; content?: string; site: Site; post?: Post | null }
 export interface WidgetProps<S = any> { widget: WidgetInstance; settings: S; site: Site }
 export interface SlotProps { site: Site; data?: ResolveResult | null }
-export interface BlockProps<D = any> { block: Block; data: D; site: Site; post?: Post | null }
+/**
+ * Renderer khối của plugin. Dùng cho cả khối cấp cao nhất (`data` = dữ liệu khối) và nút trong nội dung soạn thảo
+ * (`data` = thuộc tính của nút, `children` = nội dung bên trong đã vẽ — vd hộp lưu ý chứa đoạn văn).
+ */
+export interface BlockProps<D = any> { block: Block; data: D; site: Site; post?: Post | null; children?: ReactNode }
 
 export interface DocumentMetadata {
   title: string;

@@ -1,0 +1,762 @@
+{
+  "name": "all-core-nodes",
+  "note": "Đủ mọi khối và định dạng lõi — đã chuẩn, chuẩn hoá không đổi gì",
+  "input": {
+    "version": 1,
+    "blocks": [
+      {
+        "id": "main",
+        "type": "richtext",
+        "data": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "heading",
+              "attrs": {
+                "level": 2,
+                "textAlign": "center"
+              },
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Tiêu đề"
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Chữ "
+                },
+                {
+                  "type": "text",
+                  "text": "đậm",
+                  "marks": [
+                    {
+                      "type": "bold"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "text": " và "
+                },
+                {
+                  "type": "text",
+                  "text": "liên kết",
+                  "marks": [
+                    {
+                      "type": "link",
+                      "attrs": {
+                        "href": "https://example.com",
+                        "target": "_blank",
+                        "rel": "nofollow"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "hardBreak"
+                },
+                {
+                  "type": "text",
+                  "text": "dòng mới",
+                  "marks": [
+                    {
+                      "type": "italic"
+                    },
+                    {
+                      "type": "underline"
+                    },
+                    {
+                      "type": "strike"
+                    },
+                    {
+                      "type": "code"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "H"
+                },
+                {
+                  "type": "text",
+                  "text": "2",
+                  "marks": [
+                    {
+                      "type": "subscript"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "text": "O "
+                },
+                {
+                  "type": "text",
+                  "text": "x",
+                  "marks": [
+                    {
+                      "type": "superscript"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "text": " tô",
+                  "marks": [
+                    {
+                      "type": "highlight",
+                      "attrs": {
+                        "color": "#ff0"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "text": " màu",
+                  "marks": [
+                    {
+                      "type": "textStyle",
+                      "attrs": {
+                        "color": "#e11d48"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "bulletList",
+              "content": [
+                {
+                  "type": "listItem",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Một"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "listItem",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Hai"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "orderedList",
+              "attrs": {
+                "start": 3
+              },
+              "content": [
+                {
+                  "type": "listItem",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Ba"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "taskList",
+              "content": [
+                {
+                  "type": "taskItem",
+                  "attrs": {
+                    "checked": true
+                  },
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Xong"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "blockquote",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Trích dẫn"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "codeBlock",
+              "attrs": {
+                "language": "ts"
+              },
+              "content": [
+                {
+                  "type": "text",
+                  "text": "const a = 1;"
+                }
+              ]
+            },
+            {
+              "type": "horizontalRule"
+            },
+            {
+              "type": "image",
+              "attrs": {
+                "src": "/uploads/a.jpg",
+                "alt": "Ảnh",
+                "width": 800,
+                "height": 600,
+                "srcset": "/uploads/a-400.jpg 400w, /uploads/a.jpg 800w",
+                "webpSrcset": "/uploads/a-400.webp 400w, /uploads/a.webp 800w",
+                "mediaId": 12,
+                "size": "large",
+                "caption": "Chú thích",
+                "align": "wide"
+              }
+            },
+            {
+              "type": "gallery",
+              "attrs": {
+                "images": [
+                  {
+                    "src": "/uploads/1.jpg",
+                    "alt": "1",
+                    "full": "/uploads/1-full.jpg"
+                  },
+                  {
+                    "src": "/uploads/2.jpg",
+                    "alt": "2"
+                  }
+                ],
+                "columns": 2,
+                "caption": "Bộ ảnh"
+              }
+            },
+            {
+              "type": "video",
+              "attrs": {
+                "src": "/uploads/v.mp4",
+                "name": "v.mp4",
+                "mime": "video/mp4",
+                "mediaId": 3,
+                "poster": "/uploads/p.jpg",
+                "caption": "Video"
+              }
+            },
+            {
+              "type": "audio",
+              "attrs": {
+                "src": "/uploads/a.mp3",
+                "name": "a.mp3",
+                "mime": "audio/mpeg"
+              }
+            },
+            {
+              "type": "file",
+              "attrs": {
+                "src": "/uploads/d.pdf",
+                "name": "Tài liệu",
+                "mime": "application/pdf",
+                "size": 1024,
+                "embed": true
+              }
+            },
+            {
+              "type": "table",
+              "content": [
+                {
+                  "type": "tableRow",
+                  "content": [
+                    {
+                      "type": "tableHeader",
+                      "attrs": {
+                        "colspan": 1,
+                        "rowspan": 1
+                      },
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "type": "text",
+                              "text": "A"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "tableHeader",
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "type": "text",
+                              "text": "B"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableRow",
+                  "content": [
+                    {
+                      "type": "tableCell",
+                      "attrs": {
+                        "colspan": 2,
+                        "rowspan": 1
+                      },
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "type": "text",
+                              "text": "C"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "youtube",
+              "attrs": {
+                "src": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                "start": 10
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "expected": {
+    "version": 1,
+    "blocks": [
+      {
+        "id": "main",
+        "type": "richtext",
+        "data": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "heading",
+              "attrs": {
+                "level": 2,
+                "textAlign": "center"
+              },
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Tiêu đề"
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Chữ "
+                },
+                {
+                  "type": "text",
+                  "text": "đậm",
+                  "marks": [
+                    {
+                      "type": "bold"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "text": " và "
+                },
+                {
+                  "type": "text",
+                  "text": "liên kết",
+                  "marks": [
+                    {
+                      "type": "link",
+                      "attrs": {
+                        "href": "https://example.com",
+                        "target": "_blank",
+                        "rel": "nofollow"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "hardBreak"
+                },
+                {
+                  "type": "text",
+                  "text": "dòng mới",
+                  "marks": [
+                    {
+                      "type": "italic"
+                    },
+                    {
+                      "type": "underline"
+                    },
+                    {
+                      "type": "strike"
+                    },
+                    {
+                      "type": "code"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "H"
+                },
+                {
+                  "type": "text",
+                  "text": "2",
+                  "marks": [
+                    {
+                      "type": "subscript"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "text": "O "
+                },
+                {
+                  "type": "text",
+                  "text": "x",
+                  "marks": [
+                    {
+                      "type": "superscript"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "text": " tô",
+                  "marks": [
+                    {
+                      "type": "highlight",
+                      "attrs": {
+                        "color": "#ff0"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "text": " màu",
+                  "marks": [
+                    {
+                      "type": "textStyle",
+                      "attrs": {
+                        "color": "#e11d48"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "bulletList",
+              "content": [
+                {
+                  "type": "listItem",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Một"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "listItem",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Hai"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "orderedList",
+              "attrs": {
+                "start": 3
+              },
+              "content": [
+                {
+                  "type": "listItem",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Ba"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "taskList",
+              "content": [
+                {
+                  "type": "taskItem",
+                  "attrs": {
+                    "checked": true
+                  },
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Xong"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "blockquote",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Trích dẫn"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "codeBlock",
+              "attrs": {
+                "language": "ts"
+              },
+              "content": [
+                {
+                  "type": "text",
+                  "text": "const a = 1;"
+                }
+              ]
+            },
+            {
+              "type": "horizontalRule"
+            },
+            {
+              "type": "image",
+              "attrs": {
+                "src": "/uploads/a.jpg",
+                "alt": "Ảnh",
+                "width": 800,
+                "height": 600,
+                "srcset": "/uploads/a-400.jpg 400w, /uploads/a.jpg 800w",
+                "webpSrcset": "/uploads/a-400.webp 400w, /uploads/a.webp 800w",
+                "mediaId": 12,
+                "size": "large",
+                "caption": "Chú thích",
+                "align": "wide"
+              }
+            },
+            {
+              "type": "gallery",
+              "attrs": {
+                "images": [
+                  {
+                    "src": "/uploads/1.jpg",
+                    "alt": "1",
+                    "full": "/uploads/1-full.jpg"
+                  },
+                  {
+                    "src": "/uploads/2.jpg",
+                    "alt": "2"
+                  }
+                ],
+                "columns": 2,
+                "caption": "Bộ ảnh"
+              }
+            },
+            {
+              "type": "video",
+              "attrs": {
+                "src": "/uploads/v.mp4",
+                "name": "v.mp4",
+                "mime": "video/mp4",
+                "mediaId": 3,
+                "poster": "/uploads/p.jpg",
+                "caption": "Video"
+              }
+            },
+            {
+              "type": "audio",
+              "attrs": {
+                "src": "/uploads/a.mp3",
+                "name": "a.mp3",
+                "mime": "audio/mpeg"
+              }
+            },
+            {
+              "type": "file",
+              "attrs": {
+                "src": "/uploads/d.pdf",
+                "name": "Tài liệu",
+                "mime": "application/pdf",
+                "size": 1024,
+                "embed": true
+              }
+            },
+            {
+              "type": "table",
+              "content": [
+                {
+                  "type": "tableRow",
+                  "content": [
+                    {
+                      "type": "tableHeader",
+                      "attrs": {
+                        "colspan": 1,
+                        "rowspan": 1
+                      },
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "type": "text",
+                              "text": "A"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "tableHeader",
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "type": "text",
+                              "text": "B"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableRow",
+                  "content": [
+                    {
+                      "type": "tableCell",
+                      "attrs": {
+                        "colspan": 2,
+                        "rowspan": 1
+                      },
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "type": "text",
+                              "text": "C"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "youtube",
+              "attrs": {
+                "src": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                "start": 10
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

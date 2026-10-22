@@ -1,0 +1,155 @@
+{
+  "name": "plugin-blocks-preserved",
+  "note": "Khối/nút của plugin (kể cả plugin đã tắt): giữ nguyên dữ liệu, chỉ bỏ thuộc tính null",
+  "input": {
+    "version": 1,
+    "blocks": [
+      {
+        "id": "main",
+        "type": "richtext",
+        "data": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Trước"
+                }
+              ]
+            },
+            {
+              "type": "callout",
+              "attrs": {
+                "tone": "warning",
+                "title": null,
+                "extra": {
+                  "a": 1
+                }
+              },
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Lưu ý"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "product-card",
+              "attrs": {
+                "productId": 42
+              }
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Sau"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": "b2",
+        "type": "ecommerce/products",
+        "data": {
+          "ids": [
+            1,
+            2,
+            3
+          ],
+          "layout": "grid"
+        }
+      },
+      {
+        "id": "b3",
+        "type": "legacy-plugin",
+        "data": null
+      }
+    ]
+  },
+  "expected": {
+    "version": 1,
+    "blocks": [
+      {
+        "id": "main",
+        "type": "richtext",
+        "data": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Trước"
+                }
+              ]
+            },
+            {
+              "type": "callout",
+              "attrs": {
+                "tone": "warning",
+                "extra": {
+                  "a": 1
+                }
+              },
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Lưu ý"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "product-card",
+              "attrs": {
+                "productId": 42
+              }
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Sau"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": "b2",
+        "type": "ecommerce/products",
+        "data": {
+          "ids": [
+            1,
+            2,
+            3
+          ],
+          "layout": "grid"
+        }
+      },
+      {
+        "id": "b3",
+        "type": "legacy-plugin",
+        "data": null
+      }
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "name": "empty-and-newer",
+  "note": "Rỗng, và version lạ (≤0 → 1)",
+  "input": {
+    "version": 0,
+    "blocks": []
+  },
+  "expected": {
+    "version": 1,
+    "blocks": []
+  }
+}

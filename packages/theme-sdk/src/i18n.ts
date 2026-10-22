@@ -24,7 +24,7 @@ export const BUILTIN: Record<string, Record<string, string>> = {
     "auth.noAccount": "Chưa có tài khoản?", "auth.register": "Đăng ký", "auth.forgot": "Quên mật khẩu?", "auth.haveAccount": "Đã có tài khoản?",
     "auth.login2": "Đăng nhập", "auth.registerClosed": "Website hiện không mở đăng ký thành viên.",
     "auth.missingToken": "Liên kết không hợp lệ — hãy yêu cầu đặt lại mật khẩu lần nữa.", "auth.signedInAs": "Bạn đang đăng nhập với tên {name}.",
-    "form.submit": "Gửi", "form.sending": "Đang gửi…", "form.error": "Không gửi được, vui lòng thử lại",
+    "file.download": "Tải tệp", "form.submit": "Gửi", "form.sending": "Đang gửi…", "form.error": "Không gửi được, vui lòng thử lại",
   },
   en: {
     "search.placeholder": "Search…", "search.button": "Search", "search.label": "Keyword",
@@ -45,7 +45,7 @@ export const BUILTIN: Record<string, Record<string, string>> = {
     "auth.noAccount": "No account yet?", "auth.register": "Register", "auth.forgot": "Forgot password?", "auth.haveAccount": "Already have an account?",
     "auth.login2": "Log in", "auth.registerClosed": "Registration is currently closed.",
     "auth.missingToken": "Invalid link — please request a new password reset.", "auth.signedInAs": "You are logged in as {name}.",
-    "form.submit": "Send", "form.sending": "Sending…", "form.error": "Could not send, please try again",
+    "file.download": "Download", "form.submit": "Send", "form.sending": "Sending…", "form.error": "Could not send, please try again",
   },
 };
 

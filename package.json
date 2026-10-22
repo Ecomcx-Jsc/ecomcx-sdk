@@ -1,6 +1,6 @@
 {
   "name": "ecomcx-sdk",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "description": "Ecomcx Nexus SDK - Developer Tools, CLI and Libraries for Theme & Plugin Development",
   "type": "module",
   "bin": {
@@ -16,7 +16,7 @@
     "intl-messageformat": "12.1.3"
   },
   "scripts": {
-    "test": "node packages/create-cms/bin/cms.mjs --help",
+    "test": "node scripts/test.mjs",
     "release": "node scripts/release.mjs --check"
   },
   "keywords": [

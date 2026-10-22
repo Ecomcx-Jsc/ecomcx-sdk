@@ -1,0 +1,145 @@
+{
+  "name": "invalid-structure",
+  "note": "Cấu trúc hỏng: nút không type, chữ rỗng, mark lặp/sai, attrs không phải object, khối không type — bỏ phần hỏng, giữ phần đúng",
+  "input": {
+    "version": 1,
+    "blocks": [
+      {
+        "id": "main",
+        "type": "richtext",
+        "data": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": ""
+                },
+                {
+                  "text": "không type"
+                },
+                {
+                  "type": "text",
+                  "text": "ok",
+                  "marks": [
+                    {
+                      "type": "bold"
+                    },
+                    {
+                      "type": "bold"
+                    },
+                    {
+                      "type": ""
+                    },
+                    "x"
+                  ]
+                },
+                {
+                  "type": "text",
+                  "text": 5
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "attrs": [
+                "mảng"
+              ],
+              "content": "không phải mảng"
+            },
+            "chuỗi",
+            null,
+            {
+              "type": "blockquote",
+              "content": [
+                null,
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "q"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "type": ""
+      },
+      "khối chuỗi",
+      {
+        "id": 5,
+        "type": "html",
+        "data": {
+          "html": 7
+        }
+      },
+      {
+        "type": "html"
+      }
+    ]
+  },
+  "expected": {
+    "version": 1,
+    "blocks": [
+      {
+        "id": "main",
+        "type": "richtext",
+        "data": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "ok",
+                  "marks": [
+                    {
+                      "type": "bold"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "paragraph"
+            },
+            {
+              "type": "blockquote",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "q"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "type": "html",
+        "data": {
+          "html": ""
+        }
+      },
+      {
+        "type": "html",
+        "data": {
+          "html": ""
+        }
+      }
+    ]
+  }
+}
