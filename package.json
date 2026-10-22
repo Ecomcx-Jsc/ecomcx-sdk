@@ -11,7 +11,7 @@
     "packages/*"
   ],
   "dependencies": {
-    "@cms/content": "github:Ecomcx-Jsc/ecomcx-nexus-content#v1.0.0",
+    "@cms/content": "github:Ecomcx-Jsc/ecomcx-nexus-content#semver:^1",
     "adm-zip": "0.5.18",
     "esbuild": "0.25.12",
     "intl-messageformat": "12.1.3"
