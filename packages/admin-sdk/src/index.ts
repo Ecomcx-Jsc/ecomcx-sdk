@@ -1,5 +1,5 @@
 import { host } from "./host";
-import type { AdminPage, DashboardWidget, MetaBox, UiKit } from "./types";
+import type { AdminPage, AskOptions, DashboardWidget, Density, MetaBox, TableSettings, UiKit } from "./types";
 
 export * from "./types";
 
@@ -78,10 +78,13 @@ export const notify = {
 };
 
 // Component UI: lấy lười từ host để module plugin có thể được import trước khi render.
-const ui = <K extends keyof UiKit>(name: K): UiKit[K] => ((props: any) => {
-  const C = host().ui[name] as any;
+// `fallback`: dùng khi CMS cũ chưa có component đó (UI kit v2) — plugin vẫn chạy, chỉ giản dị hơn.
+const ui = <K extends keyof UiKit>(name: K, fallback?: (props: any) => any): NonNullable<UiKit[K]> => ((props: any) => {
+  const C = (host().ui[name] as any) ?? fallback;
+  if (!C) { console.warn(`[admin-sdk] CMS chưa có ui.${String(name)} — cần bản CMS mới hơn`); return null; }
   return host().React.createElement(C, props);
 }) as any;
+const h = (...a: any[]) => (host().React.createElement as any)(...a);
 
 export const registerSlot = (slot: import("./types").AdminSlotItem) => host().registerSlot(slot);
 export const getSlots = (slot: string, postType?: string) => (host().getSlots ? host().getSlots(slot, postType) : []);
@@ -131,3 +134,59 @@ export const Tabs = ui("Tabs");
 export const MetaBoxes = ui("MetaBoxes");
 export const Slot = ui("Slot");
 export const Fill = ui("Fill");
+
+// ----- UI kit v2 (xem trang /ui-kit trong admin) -----
+export const Dialog = ui("Dialog", (p) => h(host().ui.Modal, p));
+export const Drawer = ui("Drawer", (p) => h(host().ui.Modal, p));
+export const Popover = ui("Popover");
+export const DropdownMenu = ui("DropdownMenu");
+export const MenuItem = ui("MenuItem");
+export const MenuSeparator = ui("MenuSeparator", () => null);
+export const MenuLabel = ui("MenuLabel");
+export const Tooltip = ui("Tooltip", (p) => p.children);
+export const Skeleton = ui("Skeleton", (p) => h("div", { className: p.className }));
+export const Combobox = ui("Combobox", (p) => h(host().ui.Select, {
+  value: p.value ?? "", disabled: p.disabled, "aria-label": p.ariaLabel, onChange: (e: any) => p.onChange(e.target.value || null),
+  options: [{ value: "", label: p.placeholder ?? "—" }, ...p.options],
+}));
+export const TagInput = ui("TagInput", (p) => h(host().ui.Input, {
+  defaultValue: p.value.join(", "), placeholder: p.placeholder, "aria-label": p.ariaLabel, disabled: p.disabled,
+  onBlur: (e: any) => p.onChange(String(e.target.value).split(",").map((x: string) => x.trim()).filter(Boolean)),
+}));
+export const DatePicker = ui("DatePicker", (p) => h(host().ui.Input, {
+  type: p.withTime ? "datetime-local" : "date", value: p.value ?? "", min: p.min, max: p.max, disabled: p.disabled, "aria-label": p.ariaLabel,
+  onChange: (e: any) => p.onChange(e.target.value || null),
+}));
+export const RadioGroup = ui("RadioGroup", (p) => h(host().ui.Select, {
+  value: p.value, disabled: p.disabled, "aria-label": p.ariaLabel, onChange: (e: any) => p.onChange(e.target.value),
+  options: p.options.map((o: any) => ({ value: o.value, label: typeof o.label === "string" ? o.label : o.value })),
+}));
+export const TreeView = ui("TreeView");
+export const Pagination = ui("Pagination");
+export const TableSettingsMenu = ui("TableSettingsMenu", () => null);
+
+/** Cột ẩn + mật độ của một bảng, nhớ theo `key` (vd "my-plugin:orders"). CMS cũ: không lưu, mọi cột hiện. */
+export function useTableSettings(key: string, defaults?: { hidden?: string[]; density?: Density }): TableSettings {
+  const fn = host().ui.useTableSettings;
+  if (fn) return fn(key, defaults);
+  return { hidden: defaults?.hidden ?? [], density: defaults?.density ?? "comfortable", toggleColumn: () => {}, setDensity: () => {} };
+}
+const pad = (n: number) => String(n).padStart(2, "0");
+/** ISO (UTC) → giá trị cho `DatePicker withTime` (giờ địa phương). */
+export const isoToLocal = (iso?: string | null): string | null => {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? null : `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+/** Giá trị của `DatePicker withTime` → ISO (UTC). */
+export const localToIso = (v: string | null): string | null => (v ? new Date(v).toISOString() : null);
+
+/** Hỏi xác nhận bằng hộp thoại của admin (CMS cũ: window.confirm). `danger` = nút đỏ, focus mặc định ở "Huỷ". */
+export const confirmDialog = (message: string, opts?: AskOptions): Promise<boolean> =>
+  host().ui.confirmDialog ? host().ui.confirmDialog!(message, opts) : Promise.resolve(window.confirm(message));
+/** Hỏi một chuỗi; null khi huỷ (CMS cũ: window.prompt). */
+export const promptDialog = (message: string, opts?: AskOptions & { defaultValue?: string; placeholder?: string }): Promise<string | null> =>
+  host().ui.promptDialog ? host().ui.promptDialog!(message, opts) : Promise.resolve(window.prompt(message, opts?.defaultValue ?? ""));
+/** Báo một thông điệp, chờ người dùng bấm OK (CMS cũ: window.alert). */
+export const alertDialog = (message: string, opts?: AskOptions): Promise<void> =>
+  host().ui.alertDialog ? host().ui.alertDialog!(message, opts) : Promise.resolve(window.alert(message));

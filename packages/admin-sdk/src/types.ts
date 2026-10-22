@@ -102,7 +102,20 @@ export interface Notify {
   info(message: string): void;
 }
 
-export interface Column<T> { key: string; title: ReactNode; render?: (row: T) => ReactNode; width?: number | string; align?: "left" | "right" | "center" }
+export interface Column<T> {
+  key: string; title: ReactNode; render?: (row: T) => ReactNode; width?: number | string; align?: "left" | "right" | "center"; className?: string;
+  /** Bấm tiêu đề để sắp xếp: bảng gọi `onSort`, plugin tự sắp xếp / gửi lên máy chủ (CMS có UI kit v2). */
+  sortable?: boolean;
+}
+export type SortState = { key: string; dir: "asc" | "desc" } | null;
+export interface UiOption { value: string; label: string; description?: string; disabled?: boolean }
+export interface TreeNode { id: string | number; label: ReactNode; text?: string; children?: TreeNode[]; disabled?: boolean }
+export type Density = "comfortable" | "compact";
+export interface TableSettings {
+  hidden: string[]; density: Density;
+  toggleColumn(key: string): void; setDensity(d: Density): void;
+}
+export interface AskOptions { title?: ReactNode; confirmLabel?: string; cancelLabel?: string; danger?: boolean }
 
 export interface AdminSlotItem {
   id?: string;
@@ -231,29 +244,72 @@ export interface AdminHookRegistry {
   hasFilter(filter: string, namespace?: string): boolean;
 }
 
-/** Bộ component UI của admin (Tailwind) — plugin dùng để giao diện đồng bộ với admin. */
+type Placement = "top" | "bottom" | "left" | "right" | "top-start" | "top-end" | "bottom-start" | "bottom-end" | "left-start" | "left-end" | "right-start" | "right-end";
+
+/**
+ * Bộ component UI của admin — plugin dùng để giao diện đồng bộ với admin. Xem trực tiếp mọi component tại trang /ui-kit trong admin.
+ * Mục đánh dấu "UI kit v2" chỉ có trên CMS mới (từ 22/10/2026); SDK tự thay bằng bản đơn giản khi CMS cũ chưa có.
+ */
 export interface UiKit {
   Button: ComponentType<{ variant?: "primary" | "secondary" | "danger" | "ghost"; size?: "sm" | "md"; loading?: boolean; icon?: ReactNode } & React.ButtonHTMLAttributes<HTMLButtonElement>>;
   Input: ComponentType<React.InputHTMLAttributes<HTMLInputElement> & { ref?: React.Ref<HTMLInputElement> }>;
   Textarea: ComponentType<React.TextareaHTMLAttributes<HTMLTextAreaElement> & { ref?: React.Ref<HTMLTextAreaElement> }>;
   Select: ComponentType<React.SelectHTMLAttributes<HTMLSelectElement> & { options: Array<{ value: string; label: string }> }>;
-  Checkbox: ComponentType<{ checked: boolean; onChange(checked: boolean): void; label?: ReactNode; disabled?: boolean; description?: ReactNode }>;
-  Field: ComponentType<{ label: ReactNode; help?: ReactNode; error?: ReactNode; children: ReactNode }>;
-  Card: ComponentType<{ title?: ReactNode; description?: ReactNode; actions?: ReactNode; children: ReactNode; className?: string }>;
+  /** `ariaLabel` khi không có nhãn hiện; `indeterminate` = chọn một phần. */
+  Checkbox: ComponentType<{ checked: boolean; onChange(checked: boolean): void; label?: ReactNode; disabled?: boolean; description?: ReactNode; ariaLabel?: string; indeterminate?: boolean }>;
+  /** Nhãn + chú thích/lỗi tự gắn vào ô nhập đầu tiên bên trong (trình đọc màn hình). */
+  Field: ComponentType<{ label: ReactNode; help?: ReactNode; error?: ReactNode; children: ReactNode; className?: string }>;
+  Card: ComponentType<{ title?: ReactNode; description?: ReactNode; actions?: ReactNode; children: ReactNode; className?: string; padded?: boolean }>;
   PageHeader: ComponentType<{ title: ReactNode; description?: ReactNode; actions?: ReactNode }>;
-  Table: ComponentType<{ columns: Column<any>[]; rows: any[]; rowKey?: (row: any) => string | number; empty?: ReactNode; loading?: boolean }>;
-  Badge: ComponentType<{ tone?: "gray" | "green" | "yellow" | "red" | "blue"; children: ReactNode }>;
-  Modal: ComponentType<{ open: boolean; title: ReactNode; onClose(): void; children: ReactNode; footer?: ReactNode; width?: number }>;
+  /** Bảng. Sắp xếp: cột `sortable` + `sort`/`onSort`; ẩn cột + mật độ: lấy từ `useTableSettings`. */
+  Table: ComponentType<{
+    columns: Column<any>[]; rows: any[]; rowKey?: (row: any) => string | number; empty?: ReactNode; loading?: boolean;
+    selectable?: boolean; selected?: Set<string | number>; onSelect?(s: Set<string | number>): void; onRowClick?(row: any): void;
+    sort?: SortState; onSort?(s: SortState): void; hiddenColumns?: string[]; density?: Density; ariaLabel?: string;
+  }>;
+  Badge: ComponentType<{ tone?: "gray" | "green" | "yellow" | "red" | "blue" | "purple"; children: ReactNode; dot?: boolean }>;
+  /** Hộp thoại (= Dialog): giữ focus bên trong, Esc / bấm ra ngoài để đóng, trả focus khi đóng. */
+  Modal: ComponentType<{ open: boolean; title: ReactNode; onClose(): void; children: ReactNode; footer?: ReactNode; width?: number; description?: ReactNode; dismissOnBackdrop?: boolean }>;
   Spinner: ComponentType<{ className?: string }>;
-  EmptyState: ComponentType<{ title: ReactNode; description?: ReactNode; action?: ReactNode }>;
+  EmptyState: ComponentType<{ title: ReactNode; description?: ReactNode; action?: ReactNode; icon?: ReactNode }>;
   MediaPicker: ComponentType<{ value?: { id: number; url: string } | null; onChange(value: { id: number; url: string } | null): void; accept?: string }>;
-  Switch: ComponentType<{ checked: boolean; onChange(v: boolean): void; disabled?: boolean; label?: string }>;
+  /** Có `children` thì hiện nhãn bên cạnh; không thì cần `label` (đọc cho trình đọc màn hình). */
+  Switch: ComponentType<{ checked: boolean; onChange(v: boolean): void; disabled?: boolean; label?: string; children?: ReactNode; description?: ReactNode }>;
   IconButton: ComponentType<{ label: string; active?: boolean; children: ReactNode } & React.ButtonHTMLAttributes<HTMLButtonElement>>;
   Section: ComponentType<{ title: ReactNode; children: ReactNode; defaultOpen?: boolean; actions?: ReactNode }>;
   Tabs: ComponentType<{ value: string; onChange(v: string): void; items: Array<{ value: string; label: ReactNode; count?: number }> }>;
   MetaBoxes: ComponentType<MetaBoxesProps>;
   Slot: ComponentType<{ name: string; props?: any; fallback?: ReactNode; postType?: string; className?: string }>;
   Fill: ComponentType<{ name: string; priority?: number; children: ReactNode }>;
+
+  // ----- UI kit v2 -----
+  Dialog?: UiKit["Modal"];
+  Drawer?: ComponentType<{ open: boolean; title: ReactNode; onClose(): void; children: ReactNode; footer?: ReactNode; width?: number; side?: "left" | "right"; description?: ReactNode }>;
+  Popover?: ComponentType<{ trigger: (p: { open: boolean; toggle(): void }) => ReactNode; children: (close: () => void) => ReactNode; align?: "start" | "end"; className?: string; placement?: Placement }>;
+  /** Menu thả xuống chuẩn bàn phím: `trigger` là một phần tử (Button/IconButton). */
+  DropdownMenu?: ComponentType<{ trigger: React.ReactElement; children: ReactNode; align?: "start" | "end"; className?: string; placement?: Placement }>;
+  MenuItem?: ComponentType<{ icon?: ReactNode; children: ReactNode; onClick?(): void; danger?: boolean; shortcut?: ReactNode; disabled?: boolean; keepOpen?: boolean }>;
+  MenuSeparator?: ComponentType<{}>;
+  MenuLabel?: ComponentType<{ children: ReactNode }>;
+  /** Chú thích khi rê chuột / focus bàn phím; con phải nhận focus được. */
+  Tooltip?: ComponentType<{ content: ReactNode; children: React.ReactElement; placement?: Placement; delay?: number }>;
+  Skeleton?: ComponentType<{ className?: string }>;
+  /** Chọn một trong danh sách dài, gõ để lọc (không dấu). `onSearch` để tải gợi ý từ máy chủ. */
+  Combobox?: ComponentType<{ value: string | null; onChange(v: string | null): void; options: UiOption[]; placeholder?: string; disabled?: boolean; ariaLabel?: string; onSearch?(q: string): void; clearable?: boolean; className?: string; emptyText?: ReactNode }>;
+  /** Chọn nhiều / nhập thẻ: có `options` là MultiSelect, `creatable` cho gõ giá trị mới (Enter hoặc dấu phẩy). */
+  TagInput?: ComponentType<{ value: string[]; onChange(v: string[]): void; options?: UiOption[]; creatable?: boolean; placeholder?: string; ariaLabel?: string; disabled?: boolean; max?: number; onSearch?(q: string): void }>;
+  /** Ngày "YYYY-MM-DD"; `withTime`: "YYYY-MM-DDTHH:mm" giờ địa phương (đổi với ISO bằng `isoToLocal` / `localToIso`). */
+  DatePicker?: ComponentType<{ value: string | null; onChange(v: string | null): void; withTime?: boolean; placeholder?: string; ariaLabel?: string; disabled?: boolean; min?: string; max?: string; clearable?: boolean }>;
+  RadioGroup?: ComponentType<{ value: string; onChange(v: string): void; options: Array<{ value: string; label: ReactNode; description?: ReactNode; disabled?: boolean }>; ariaLabel?: string; variant?: "list" | "cards" | "segmented"; disabled?: boolean }>;
+  TreeView?: ComponentType<{ nodes: TreeNode[]; ariaLabel: string; checkable?: boolean; checked?: Array<string | number>; onCheck?(id: string | number, value: boolean): void; selected?: string | number | null; onSelect?(id: string | number): void; defaultExpanded?: "all" | "none" | Array<string | number>; className?: string }>;
+  Pagination?: ComponentType<{ page: number; totalPages: number; onPage(p: number): void; total?: number; pageSize?: number; onPageSize?(n: number): void; pageSizes?: number[] }>;
+  TableSettingsMenu?: ComponentType<{ columns: Array<{ key: string; title: ReactNode }>; settings: TableSettings }>;
+  useTableSettings?: (key: string, defaults?: Partial<Pick<TableSettings, "hidden" | "density">>) => TableSettings;
+  isoToLocal?: (iso?: string | null) => string | null;
+  localToIso?: (value: string | null) => string | null;
+  confirmDialog?: (message: ReactNode, opts?: AskOptions) => Promise<boolean>;
+  promptDialog?: (message: ReactNode, opts?: AskOptions & { defaultValue?: string; placeholder?: string }) => Promise<string | null>;
+  alertDialog?: (message: ReactNode, opts?: AskOptions) => Promise<void>;
 }
 
 export interface CmsAdmin {
