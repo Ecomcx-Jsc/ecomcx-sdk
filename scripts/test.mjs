@@ -3,6 +3,7 @@
 //   node scripts/test.mjs content    → một gói
 //   UPDATE_SNAPSHOTS=1 node scripts/test.mjs theme-sdk   → ghi lại ảnh chụp HTML (xem kỹ diff trước khi commit)
 import { build } from "esbuild";
+import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
 import path from "node:path";
@@ -22,9 +23,18 @@ try {
   await build({
     entryPoints: entries, bundle: true, platform: "node", format: "esm", outdir: out, outbase: path.join(root, "packages"),
     outExtension: { ".js": ".mjs" }, jsx: "automatic", logLevel: "warning", packages: "external",
-    // Gói trong repo được bundle (nguồn TS), thư viện ngoài (react…) lấy từ node_modules
-    plugins: [{ name: "workspace", setup(b) { b.onResolve({ filter: /^@cms\// }, (a) => ({ path: path.join(root, "packages", a.path.slice(5), "src", "index.ts") })); } }],
-    define: { "process.env.SDK_ROOT": JSON.stringify(root) },
+    // Gói trong repo (packages/x) được bundle từ nguồn TS; @cms/content và thư viện ngoài (react…) lấy từ node_modules
+    plugins: [{ name: "workspace", setup(b) { b.onResolve({ filter: /^@cms\/[\w-]+$/ }, (a) => {
+      const src = path.join(root, "packages", a.path.slice(5), "src", "index.ts");
+      if (existsSync(src)) return { path: src };
+      // Gói @cms ngoài repo (vd @cms/content cài từ GitHub): tìm từ thư mục của file đang import, bundle luôn vào test
+      try { return { path: createRequire(path.join(a.resolveDir, "x.js")).resolve(a.path) }; } catch { return undefined; }
+    }); } }],
+    define: {
+      "process.env.SDK_ROOT": JSON.stringify(root),
+      // Thư mục gói @cms/content (fixture hợp đồng) theo đúng bản theme-sdk đang dùng
+      "process.env.CMS_CONTENT_DIR": JSON.stringify(path.dirname(createRequire(path.join(root, "packages", "theme-sdk", "x.js")).resolve("@cms/content/package.json"))),
+    },
   });
   const files = [];
   const walk = (d) => { for (const f of readdirSync(d, { withFileTypes: true })) f.isDirectory() ? walk(path.join(d, f.name)) : files.push(path.join(d, f.name)); };

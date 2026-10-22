@@ -1,6 +1,6 @@
 {
   "name": "@cms/theme-sdk",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "description": "SDK để viết theme và phần frontend của plugin cho CMS",
   "type": "module",
   "main": "./src/index.ts",
@@ -15,7 +15,7 @@
     "src"
   ],
   "dependencies": {
-    "@cms/content": "1.6.0",
+    "@cms/content": "github:Ecomcx-Jsc/ecomcx-nexus-content#v1.0.0",
     "intl-messageformat": "12.1.3"
   },
   "peerDependencies": {

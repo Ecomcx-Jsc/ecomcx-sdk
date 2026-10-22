@@ -9,7 +9,7 @@ import { renderContent, type RenderContext } from "../src/rich";
 // Hợp đồng của renderer: mỗi fixture của @cms/content vẽ ra đúng HTML đã duyệt (snapshots/). Đổi renderer có chủ đích:
 // UPDATE_SNAPSHOTS=1 node scripts/test.mjs theme-sdk, rồi xem kỹ diff.
 const root = process.env.SDK_ROOT!;
-const fixtures = path.join(root, "packages", "content", "fixtures");
+const fixtures = path.join(process.env.CMS_CONTENT_DIR!, "fixtures"); // fixture hợp đồng của @cms/content
 const snapshots = path.join(root, "packages", "theme-sdk", "test", "snapshots");
 const site = { name: "Test", url: "https://example.com", locale: "vi" } as unknown as Site;
 

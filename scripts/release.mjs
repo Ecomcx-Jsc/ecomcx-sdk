@@ -14,9 +14,7 @@ const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..")
 const out = path.join(root, "dist-release");
 const check = process.argv.includes("--check");
 const run = (cmd, args, cwd) => execFileSync(cmd, args, { cwd, stdio: ["ignore", "pipe", "inherit"] }).toString();
-const PACKAGES = ["packages/content", "packages/admin-sdk", "packages/theme-sdk"];
-// Gói nội bộ được nhúng vào gói dùng nó (theme-sdk mang sẵn @cms/content) → người dùng chỉ cài một tarball, không lệch phiên bản
-const EMBEDDED = { "@cms/content": "packages/content" };
+const PACKAGES = ["packages/admin-sdk", "packages/theme-sdk"];
 
 /** "./api" → "./api.js", "./x" (thư mục) → "./x/index.js": Node ESM và webpack (gói type: module) bắt buộc đuôi đầy đủ. */
 function fixSpecifiers(dir) {
@@ -44,9 +42,8 @@ function releaseManifest(pkg) {
   }
   exportsMap["./package.json"] = "./package.json";
   const { scripts, devDependencies, ...rest } = pkg;
-  const dependencies = Object.fromEntries(Object.entries(pkg.dependencies ?? {}).filter(([name]) => !(name in EMBEDDED)));
   const files = ["dist", "README.md", ...(pkg.files ?? []).filter((f) => f !== "src" && f !== "README.md")];
-  return { ...rest, dependencies, main: toDist(pkg.main), types: toDist(pkg.main).replace(/\.js$/, ".d.ts"), exports: exportsMap, files, sideEffects: false };
+  return { ...rest, main: toDist(pkg.main), types: toDist(pkg.main).replace(/\.js$/, ".d.ts"), exports: exportsMap, files, sideEffects: false };
 }
 
 rmSync(out, { recursive: true, force: true });
@@ -63,25 +60,6 @@ for (const dir of PACKAGES) {
   rmSync(work, { recursive: true, force: true });
   mkdirSync(work, { recursive: true });
   cpSync(path.join(root, dir, "src"), path.join(work, "src"), { recursive: true });
-  // Nhúng gói nội bộ: chép mã vào src/_<tên>/ và đổi import "@cms/x" thành đường dẫn tương đối
-  for (const [name, embedDir] of Object.entries(EMBEDDED)) {
-    if (!(name in (pkg.dependencies ?? {}))) continue;
-    const target = path.join(work, "src", "_" + path.basename(embedDir));
-    cpSync(path.join(root, embedDir, "src"), target, { recursive: true });
-    const rewrite = (d) => {
-      for (const f of readdirSync(d)) {
-        const file = path.join(d, f);
-        if (statSync(file).isDirectory()) { if (file !== target) rewrite(file); continue; }
-        if (!/\.tsx?$/.test(f)) continue;
-        const src = readFileSync(file, "utf8");
-        let rel = path.relative(path.dirname(file), target).replace(/\\/g, "/");
-        if (!rel.startsWith(".")) rel = "./" + rel;
-        const next = src.replaceAll(`"${name}"`, `"${rel}/index"`);
-        if (next !== src) writeFileSync(file, next);
-      }
-    };
-    rewrite(path.join(work, "src"));
-  }
   writeFileSync(path.join(work, "tsconfig.json"), JSON.stringify({
     compilerOptions: {
       target: "ES2022", lib: ["dom", "dom.iterable", "esnext"], module: "esnext", moduleResolution: "bundler", jsx: "react-jsx",
@@ -105,7 +83,6 @@ const version = [...versions][0];
 // Bản sao không chứa số phiên bản để URL /releases/latest/download/cms-theme-sdk.tgz luôn cố định
 cpSync(path.join(out, `cms-admin-sdk-${version}.tgz`), path.join(out, "cms-admin-sdk.tgz"));
 cpSync(path.join(out, `cms-theme-sdk-${version}.tgz`), path.join(out, "cms-theme-sdk.tgz"));
-cpSync(path.join(out, `cms-content-${version}.tgz`), path.join(out, "cms-content.tgz"));
 
 if (check) {
   const tmp = path.join(out, "check");
@@ -118,10 +95,10 @@ if (check) {
     console.log("  ✓ @cms/admin-sdk import được (Node ESM)");
     const content = await import("@cms/content");
     if (content.normalizeContent({ type: "doc", content: [] }).doc.version !== 1) throw new Error("@cms/content sai");
-    console.log("  ✓ @cms/content import được (Node ESM)");
+    console.log("  ✓ @cms/content (phụ thuộc của theme-sdk, cài từ GitHub) import được");
   `);
   console.log(run("node", ["check.mjs"], tmp).trim());
-  for (const f of ["@cms/admin-sdk/dist/index.d.ts", "@cms/theme-sdk/dist/index.d.ts", "@cms/theme-sdk/dist/client.js", "@cms/theme-sdk/dist/_content/index.js", "@cms/content/fixtures/all-core-nodes.json"])
+  for (const f of ["@cms/admin-sdk/dist/index.d.ts", "@cms/theme-sdk/dist/index.d.ts", "@cms/theme-sdk/dist/client.js", "@cms/content/dist/index.js"])
     if (!existsSync(path.join(tmp, "node_modules", f))) throw new Error(`Thiếu ${f}`);
   const client = readFileSync(path.join(tmp, "node_modules/@cms/theme-sdk/dist/client.js"), "utf8");
   if (!client.startsWith('"use client"')) throw new Error('theme-sdk/client.js mất chỉ thị "use client"');
