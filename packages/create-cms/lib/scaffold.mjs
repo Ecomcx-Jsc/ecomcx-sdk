@@ -10,15 +10,23 @@ export function scaffoldTheme(name, { parent, dir } = {}) {
   write(path.join(root, "theme.json"), JSON.stringify({
     name, slug, version: "1.0.0", author: "", description: `Theme ${name}`,
     ...(parent ? { parent } : {}),
-    requires: { cms: ">=1.0.0 <2.0.0" },
-    menuLocations: { primary: "Menu chính", footer: "Menu chân trang" },
-    widgetAreas: { sidebar: "Sidebar" },
+    requires: { cms: ">=1.8.0 <2.0.0" },
+    // Nhãn trong admin: "%khoá%" → locales/{vi,en}.json của theme (CMS ≥ 1.8.0)
+    menuLocations: { primary: "%admin.menu.primary%", footer: "%admin.menu.footer%" },
+    widgetAreas: { sidebar: "%admin.widgets.sidebar%" },
     supports: ["post-thumbnails", "custom-logo", "comments", "menus", "widgets"],
     settings: [
-      { key: "primaryColor", type: "color", label: "Màu chủ đạo", default: "#0ea5e9" },
-      { key: "footerText", type: "textarea", label: "Chữ chân trang", default: "" },
+      { key: "primaryColor", type: "color", label: "%admin.setting.primaryColor%", default: "#0ea5e9", section: "%admin.section.colors%" },
+      { key: "footerText", type: "textarea", label: "%admin.setting.footerText%", default: "", section: "%admin.section.footer%" },
     ],
   }, null, 2) + "\n");
+  const labels = {
+    vi: { "admin.menu.primary": "Menu chính", "admin.menu.footer": "Menu chân trang", "admin.widgets.sidebar": "Sidebar", "admin.setting.primaryColor": "Màu chủ đạo",
+      "admin.setting.footerText": "Chữ chân trang", "admin.section.colors": "Màu sắc", "admin.section.footer": "Chân trang" },
+    en: { "admin.menu.primary": "Main menu", "admin.menu.footer": "Footer menu", "admin.widgets.sidebar": "Sidebar", "admin.setting.primaryColor": "Accent color",
+      "admin.setting.footerText": "Footer text", "admin.section.colors": "Colors", "admin.section.footer": "Footer" },
+  };
+  for (const [code, dict] of Object.entries(labels)) write(path.join(root, "locales", `${code}.json`), JSON.stringify(dict, null, 2) + "\n");
 
   write(path.join(root, "package.json"), JSON.stringify({
     name: `cms-theme-${slug}`, private: true, version: "1.0.0",
@@ -266,14 +274,14 @@ export function scaffoldPlugin(name, { backend = "source", admin = false, fronte
   if (backend === true) backend = "project";
   if (!backend && !admin && !frontend) throw new Error("Plugin cần ít nhất một phần: bỏ --no-backend hoặc thêm --admin / --frontend");
 
-  const manifest = { name, slug, version: "1.0.0", author: "", description: `Plugin ${name}`, requires: { cms: ">=1.7.0 <2.0.0" } };
+  const manifest = { name, slug, version: "1.0.0", author: "", description: `Plugin ${name}`, requires: { cms: ">=1.8.0 <2.0.0" } };
   if (backend === "source") manifest.backend = `${cls}.cs`;
   if (backend === "project") manifest.backend = { assembly: `backend/${cls}.dll`, entry: `${cls}.${cls}Plugin` };
   if (admin) {
     manifest.admin = { entry: "admin/index.js" };
     // Trang settings + menu khai báo trong plugin.json — trang admin tự viết ở admin/src đọc/ghi cùng nhóm settings
-    manifest.settings = { general: { title: name, fields: [{ key: "greeting", type: "text", label: "Lời chào", default: "Xin chào!" }] } };
-    manifest.menus = [{ id: slug, title: name, path: `/${slug}`, icon: "puzzle" }];
+    manifest.settings = { general: { title: "%menu.title%", fields: [{ key: "greeting", type: "text", label: "%settings.greeting%", default: "Xin chào!" }] } };
+    manifest.menus = [{ id: slug, title: "%menu.title%", path: `/${slug}`, icon: "puzzle" }];
   }
   if (frontend) manifest.frontend = { entry: "frontend/index.tsx" };
   write(path.join(root, "plugin.json"), JSON.stringify(manifest, null, 2) + "\n");

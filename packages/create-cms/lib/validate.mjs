@@ -21,10 +21,13 @@ export function validate(dir) {
   if (!manifest.name) errors.push("Thiếu name");
   if (!SLUG.test(manifest.slug ?? "")) errors.push("slug chỉ gồm a-z, 0-9, dấu gạch ngang (2–64 ký tự)");
   if (!SEMVER.test(manifest.version ?? "")) errors.push("version phải theo semver, vd 1.0.0");
-  checkLocales(dir, errors, warnings);
+  const dicts = checkLocales(dir, errors, warnings);
+  checkLabelKeys(manifest, dicts, kind, errors, warnings);
   // Bản dịch kiểu cũ (khoá là chuỗi gốc): { "en": { "Chuỗi gốc": "Translation" } } — vẫn chạy, nên chuyển sang locales/*.json
   if (manifest.translations !== undefined) {
-    if (kind === "plugin") warnings.push('"translations" (khoá là chuỗi gốc) đã cũ — chuyển sang locales/{vi,en}.json + createT()/Text.T() (xem plugin-guide › Đa ngôn ngữ)');
+    warnings.push(kind === "plugin"
+      ? '"translations" (khoá là chuỗi gốc) đã cũ — chuyển sang locales/{vi,en}.json + createT()/Text.T(); nhãn trong plugin.json viết "%khoá%" (xem plugin-guide › Đa ngôn ngữ)'
+      : '"translations" (khoá là chuỗi gốc) đã cũ — nhãn trong theme.json viết "%khoá%" và dịch trong locales/{vi,en}.json (CMS ≥ 1.8.0, xem theme-guide › Đa ngôn ngữ)');
     const t = manifest.translations;
     const okShape = t && typeof t === "object" && !Array.isArray(t) && Object.entries(t).every(([code, d]) =>
       /^[a-z]{2}(-[a-z0-9]{2,8})?$/i.test(code) && d && typeof d === "object" && !Array.isArray(d) && Object.values(d).every((v) => typeof v === "string"));
@@ -109,9 +112,25 @@ function checkPermissions(perms, errors, warnings) {
   if (perms.includes("filesystem")) warnings.push('Quyền "filesystem" toàn phần bị bộ quét cảnh báo — nếu chỉ cần lưu file của plugin, khai báo "files" (hoặc "files:500mb") và dùng ctx.Files (CMS ≥ 1.8.0)');
 }
 
+/** Nhãn "%khoá%" trong manifest phải có trong locales/*.json của gói (CMS dịch theo ngôn ngữ người xem, CMS ≥ 1.8.0). */
+function checkLabelKeys(manifest, dicts, kind, errors, warnings) {
+  const refs = new Set();
+  const visit = (v) => {
+    if (typeof v === "string") { const m = /^%([A-Za-z][\w.-]*)%$/.exec(v); if (m) refs.add(m[1]); }
+    else if (Array.isArray(v)) v.forEach(visit);
+    else if (v && typeof v === "object") Object.values(v).forEach(visit);
+  };
+  visit(manifest);
+  if (!refs.size) return;
+  const codes = Object.keys(dicts);
+  if (!codes.length) { errors.push(`${kind}.json dùng nhãn "%khoá%" nhưng không có locales/*.json`); return; }
+  for (const key of refs) if (!codes.some((c) => key in dicts[c])) errors.push(`Nhãn "%${key}%" không có trong locales/*.json`);
+  if (!/>=\s*1\.([8-9]|\d\d)/.test(manifest.requires?.cms ?? "")) warnings.push('nhãn "%khoá%" cần CMS ≥ 1.8.0 (bản cũ hiện nguyên chữ) — nên ghi "requires": { "cms": ">=1.8.0" }');
+}
+
 function checkLocales(dir, errors, warnings) {
   const localesDir = path.join(dir, "locales");
-  if (!fs.existsSync(localesDir)) return;
+  if (!fs.existsSync(localesDir)) return {};
   const dicts = {};
   for (const file of fs.readdirSync(localesDir).filter((f) => f.endsWith(".json"))) {
     if (!LOCALE_FILE.test(file)) { errors.push(`locales/${file}: tên file phải là mã ngôn ngữ, vd vi.json, en.json`); continue; }
@@ -135,6 +154,7 @@ function checkLocales(dir, errors, warnings) {
     const vars = new Set(codes.filter((c) => key in dicts[c]).map((c) => dicts[c][key]));
     if (vars.size > 1) errors.push(`locales: biến của "${key}" lệch giữa các ngôn ngữ (${codes.filter((c) => key in dicts[c]).map((c) => `${c}: {${dicts[c][key]}}`).join(" · ")})`);
   }
+  return dicts;
 }
 
 function findLegacyCalls(srcDir) {
