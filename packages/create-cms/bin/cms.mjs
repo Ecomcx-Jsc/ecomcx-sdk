@@ -13,7 +13,7 @@ import { c, parseArgs } from "../lib/util.mjs";
 import { scaffoldPlugin, scaffoldSimplePlugin, scaffoldTheme } from "../lib/scaffold.mjs";
 import { validate } from "../lib/validate.mjs";
 import { pack } from "../lib/pack.mjs";
-import { deploy } from "../lib/deploy.mjs";
+import { check, deploy } from "../lib/deploy.mjs";
 import { env, findEnv } from "../lib/env.mjs";
 
 const HELP = `${c.bold("create-cms")} — công cụ viết theme/plugin cho CMS
@@ -21,6 +21,7 @@ const HELP = `${c.bold("create-cms")} — công cụ viết theme/plugin cho CMS
   ${c.cyan('theme "Tên"')} [--parent default]      tạo theme (child theme với --parent)
   ${c.cyan('plugin "Tên"')} [--simple] [--no-backend|--no-admin|--no-frontend]   tạo plugin (--simple: một file C#, CMS tự biên dịch)
   ${c.cyan("validate")} [thư-mục]                  kiểm tra theme.json / plugin.json
+  ${c.cyan("check")} [thư-mục]                     chạy thử trên CMS: manifest, biên dịch, quét bảo mật (như khi cài / nộp Store)
   ${c.cyan("pack")} [thư-mục] [--out dist]         đóng gói → dist/<slug>-<version>.zip
   ${c.cyan("deploy")} [thư-mục] [--activate]       đóng gói + cài lên CMS (--url, --user, --password)
   ${c.cyan("dev")} [thư-mục]                       tự đóng gói + cài lại mỗi khi sửa file
@@ -107,6 +108,9 @@ try {
       break;
     case "deploy":
       await deploy(await packAndReport(dir), connection());
+      break;
+    case "check":
+      if (!(await check(await packAndReport(dir), connection()))) process.exitCode = 1;
       break;
     case "dev":
       await dev(dir);
