@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // create-cms — tạo, kiểm tra, đóng gói và triển khai theme/plugin cho CMS.
 //   create-cms theme "Tên" [--parent default] [--dir x]
-//   create-cms plugin "Tên" [--no-backend] [--no-admin] [--no-frontend] [--dir x]
+//   create-cms plugin "Tên" [--admin] [--frontend] [--project] [--no-backend] [--tests] [--dir x]
 //   create-cms validate [thư-mục]
 //   create-cms pack [thư-mục] [--out dist]
 //   create-cms deploy [thư-mục] [--url …] [--user …] [--password …] [--activate]
@@ -10,7 +10,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { c, parseArgs } from "../lib/util.mjs";
-import { scaffoldPlugin, scaffoldSimplePlugin, scaffoldTheme } from "../lib/scaffold.mjs";
+import { scaffoldPlugin, scaffoldTheme } from "../lib/scaffold.mjs";
 import { validate } from "../lib/validate.mjs";
 import { pack } from "../lib/pack.mjs";
 import { check, deploy } from "../lib/deploy.mjs";
@@ -19,7 +19,8 @@ import { env, findEnv } from "../lib/env.mjs";
 const HELP = `${c.bold("create-cms")} — công cụ viết theme/plugin cho CMS
 
   ${c.cyan('theme "Tên"')} [--parent default]      tạo theme (child theme với --parent)
-  ${c.cyan('plugin "Tên"')} [--simple] [--tests] [--no-backend|--no-admin|--no-frontend]   tạo plugin (--simple: một file C#, CMS tự biên dịch)
+  ${c.cyan('plugin "Tên"')} [--admin] [--frontend] [--tests]   tạo plugin: plugin.json + một file C# (CMS tự biên dịch)
+                                      --admin / --frontend: thêm giao diện React riêng · --project: dự án csproj · --no-backend
   ${c.cyan("validate")} [thư-mục]                  kiểm tra theme.json / plugin.json
   ${c.cyan("test")} [thư-mục]                      đóng gói + chạy test xUnit trong tests/ trên CMS thử (Cms.Plugin.Testing)
   ${c.cyan("check")} [thư-mục]                     chạy thử trên CMS: manifest, biên dịch, quét bảo mật (như khi cài / nộp Store)
@@ -95,8 +96,7 @@ try {
       if (!name) throw new Error(`Thiếu tên: create-cms ${cmd} "Tên ${cmd}"`);
       const { root } = cmd === "theme"
         ? scaffoldTheme(name, { parent: args.parent, dir: args.dir })
-        : args.simple ? scaffoldSimplePlugin(name, { dir: args.dir, tests: !!args.tests })
-        : scaffoldPlugin(name, { backend: !args["no-backend"], admin: !args["no-admin"], frontend: !args["no-frontend"], dir: args.dir });
+        : scaffoldPlugin(name, { backend: args["no-backend"] ? false : args.project ? "project" : "source", admin: !!args.admin, frontend: !!args.frontend, tests: !!args.tests, dir: args.dir });
       console.log(c.green(`✓ Đã tạo ${cmd} ở ${path.relative(process.cwd(), root)}`));
       console.log(c.dim(`  cd ${path.relative(process.cwd(), root)} && npx github:Ecomcx-Jsc/ecomcx-sdk dev`));
       break;

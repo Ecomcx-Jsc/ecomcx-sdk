@@ -157,13 +157,9 @@ export default definePlugin({
  * Plugin một file C# (CMS ≥ 1.7.0 tự biên dịch khi cài — không cần .NET SDK, csproj, NuGet):
  * bảng dữ liệu EF + trang quản trị tự sinh + form trên website ([cms-form]) + hook.
  */
-export function scaffoldSimplePlugin(name, { dir, tests = false } = {}) {
-  const slug = slugify(name);
-  const cls = pascal(name) || "MyPlugin";
-  const root = path.resolve(dir ?? slug);
-  if (fs.existsSync(root) && fs.readdirSync(root).length) throw new Error(`Thư mục ${root} đã tồn tại và không rỗng`);
-  write(path.join(root, "plugin.json"), JSON.stringify({ name, slug, version: "1.0.0", author: "", description: `Plugin ${name}`, requires: { cms: ">=1.7.0 <2.0.0" }, backend: `${cls}.cs` }, null, 2) + "\n");
-  write(path.join(root, `${cls}.cs`), `namespace ${cls};
+/** Mã C# mặc định của plugin: bảng EF + trang quản trị và form website tự sinh + hook + endpoint. */
+function pluginSource(name, slug, cls) {
+  return `namespace ${cls};
 
 /// Bảng dữ liệu: CMS tự tạo bảng plg_${slug.replace(/-/g, "_")}__entries khi bật plugin, tự thêm cột khi bạn thêm thuộc tính.
 [PluginTable("entries")]
@@ -197,17 +193,12 @@ public sealed class ${cls}Plugin : CmsPlugin
             Results.Ok(new { total = await db.Set<Entry>().CountAsync(), done = await db.Set<Entry>().CountAsync(x => x.Done) })));
     }
 }
-`);
-  write(path.join(root, "README.md"), `# ${name}
+`;
+}
 
-Plugin một file — CMS tự biên dịch \`${cls}.cs\` khi cài (CMS ≥ 1.7.0).
-
-- \`npx github:Ecomcx-Jsc/ecomcx-sdk dev\` — cài lên CMS thử, sửa file là cài lại
-- Trang quản trị: menu **${name}** · Form trên website: \`[cms-form plugin="${slug}" table="entries"]\`
-- Gợi ý code trong VS Code (không bắt buộc): cài .NET SDK + gói \`Cms.Plugin.Sdk\`
-`);
-  if (tests) scaffoldTests(root, cls, slug);
-  return { root, slug };
+/** @deprecated Giữ cho lệnh cũ `plugin --simple` — giờ là mặc định của scaffoldPlugin. */
+export function scaffoldSimplePlugin(name, { dir, tests = false } = {}) {
+  return scaffoldPlugin(name, { dir, tests });
 }
 
 /** Dự án test xUnit dùng Cms.Plugin.Testing — chạy bằng `create-cms test` (cần .NET SDK). */
@@ -220,7 +211,7 @@ function scaffoldTests(root, cls, slug) {
     <IsPackable>false</IsPackable>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Cms.Plugin.Testing" Version="1.7.0" />
+    <PackageReference Include="Cms.Plugin.Testing" Version="1.8.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
@@ -262,28 +253,45 @@ public class ${cls}Tests : PluginTest
 `);
 }
 
-export function scaffoldPlugin(name, { backend = true, admin = true, frontend = true, dir } = {}) {
+/**
+ * Tạo plugin. Mặc định: plugin.json + một file C# (CMS tự biên dịch khi cài — không cần .NET SDK/csproj).
+ * backend: "source" (mặc định) | "project" (dự án csproj, khi cần nhiều file + thư viện NuGet) | false.
+ * admin / frontend: thêm giao diện React riêng — chỉ khi trang tự sinh ([AdminList], settings) không đủ.
+ */
+export function scaffoldPlugin(name, { backend = "source", admin = false, frontend = false, tests = false, dir } = {}) {
   const slug = slugify(name);
   const cls = pascal(name) || "MyPlugin";
   const root = path.resolve(dir ?? slug);
   if (fs.existsSync(root) && fs.readdirSync(root).length) throw new Error(`Thư mục ${root} đã tồn tại và không rỗng`);
+  if (backend === true) backend = "project";
+  if (!backend && !admin && !frontend) throw new Error("Plugin cần ít nhất một phần: bỏ --no-backend hoặc thêm --admin / --frontend");
 
   const manifest = { name, slug, version: "1.0.0", author: "", description: `Plugin ${name}`, requires: { cms: ">=1.7.0 <2.0.0" } };
-  if (backend) manifest.backend = { assembly: `backend/${cls}.dll`, entry: `${cls}.${cls}Plugin` };
-  if (admin) manifest.admin = { entry: "admin/index.js" };
+  if (backend === "source") manifest.backend = `${cls}.cs`;
+  if (backend === "project") manifest.backend = { assembly: `backend/${cls}.dll`, entry: `${cls}.${cls}Plugin` };
+  if (admin) {
+    manifest.admin = { entry: "admin/index.js" };
+    // Trang settings + menu khai báo trong plugin.json — trang admin tự viết ở admin/src đọc/ghi cùng nhóm settings
+    manifest.settings = { general: { title: name, fields: [{ key: "greeting", type: "text", label: "Lời chào", default: "Xin chào!" }] } };
+    manifest.menus = [{ id: slug, title: name, path: `/${slug}`, icon: "puzzle" }];
+  }
   if (frontend) manifest.frontend = { entry: "frontend/index.tsx" };
   write(path.join(root, "plugin.json"), JSON.stringify(manifest, null, 2) + "\n");
 
-  // Bản dịch theo khoá (ICU MessageFormat), namespace = slug: admin dùng createT("${slug}"), backend dùng Text.T("${slug}:khoá")
-  const messages = {
-    vi: { "menu.title": name, "page.description": "Trang quản trị của plugin.", "settings.title": "Cài đặt", "settings.greeting": "Lời chào",
-      "settings.saved": "Đã lưu", "settings.save": "Lưu", "metabox.note": "Ghi chú nội bộ", "metabox.title": name },
-    en: { "menu.title": name, "page.description": "The plugin's admin page.", "settings.title": "Settings", "settings.greeting": "Greeting",
-      "settings.saved": "Saved", "settings.save": "Save", "metabox.note": "Internal note", "metabox.title": name },
-  };
-  for (const [code, dict] of Object.entries(messages)) write(path.join(root, "locales", `${code}.json`), JSON.stringify(dict, null, 2) + "\n");
+  if (admin || backend === "project") {
+    // Bản dịch theo khoá (ICU MessageFormat), namespace = slug: admin dùng createT("${slug}"), backend dùng Text.T("${slug}:khoá")
+    const messages = {
+      vi: { "menu.title": name, "page.description": "Trang quản trị của plugin.", "settings.title": "Cài đặt", "settings.greeting": "Lời chào",
+        "settings.saved": "Đã lưu", "settings.save": "Lưu", "metabox.note": "Ghi chú nội bộ", "metabox.title": name },
+      en: { "menu.title": name, "page.description": "The plugin's admin page.", "settings.title": "Settings", "settings.greeting": "Greeting",
+        "settings.saved": "Saved", "settings.save": "Save", "metabox.note": "Internal note", "metabox.title": name },
+    };
+    for (const [code, dict] of Object.entries(messages)) write(path.join(root, "locales", `${code}.json`), JSON.stringify(dict, null, 2) + "\n");
+  }
 
-  if (backend) {
+  if (backend === "source") write(path.join(root, `${cls}.cs`), pluginSource(name, slug, cls));
+
+  if (backend === "project") {
     const repo = findCmsRepo(root);
     // Nguồn Cms.Plugin.Sdk: nuget.org; thêm feed local khi ở trong repo CMS hoặc khi đặt CMS_NUGET_FEED (thư mục chứa .nupkg)
     const feed = process.env.CMS_NUGET_FEED ? path.resolve(process.env.CMS_NUGET_FEED) : repo ? path.join(repo, "sdk", "nuget") : null;
@@ -300,10 +308,28 @@ export function scaffoldPlugin(name, { backend = true, admin = true, frontend = 
   </PropertyGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
-    <PackageReference Include="Cms.Plugin.Sdk" Version="1.7.0">
+    <PackageReference Include="Cms.Plugin.Sdk" Version="1.8.0">
       <Private>false</Private>
       <ExcludeAssets>runtime</ExcludeAssets>
     </PackageReference>
+  </ItemGroup>
+  <ItemGroup>
+    <!-- using như plugin một file (CMS tự biên dịch) -->
+    <Using Include="System.ComponentModel.DataAnnotations" />
+    <Using Include="System.Text.Json.Nodes" />
+    <Using Include="Microsoft.AspNetCore.Builder" />
+    <Using Include="Microsoft.AspNetCore.Http" />
+    <Using Include="Microsoft.AspNetCore.Routing" />
+    <Using Include="Microsoft.EntityFrameworkCore" />
+    <Using Include="Microsoft.Extensions.DependencyInjection" />
+    <Using Include="Cms.Plugin.Sdk" />
+    <Using Include="Cms.Plugin.Sdk.Contracts" />
+    <Using Include="Cms.Plugin.Sdk.Data" />
+    <Using Include="Cms.Plugin.Sdk.Hooks" />
+    <Using Include="Cms.Plugin.Sdk.Jobs" />
+    <Using Include="Cms.Plugin.Sdk.Localization" />
+    <Using Include="Cms.Plugin.Sdk.Registry" />
+    <Using Include="Cms.Plugin.Sdk.Services" />
   </ItemGroup>
 </Project>
 `);
@@ -316,59 +342,7 @@ export function scaffoldPlugin(name, { backend = true, admin = true, frontend = 
   </packageSources>
 </configuration>
 `);
-    write(path.join(root, "backend", `${cls}Plugin.cs`), `
-using System.Data.Common;
-using Cms.Plugin.Sdk;
-using Cms.Plugin.Sdk.Contracts;
-using Cms.Plugin.Sdk.Hooks;
-using Cms.Plugin.Sdk.Localization;
-using Cms.Plugin.Sdk.Registry;
-using Cms.Plugin.Sdk.Services;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.DependencyInjection;
-
-namespace ${cls};
-
-public sealed class ${cls}Plugin : CmsPlugin
-{
-    public override void Register(IPluginContext ctx)
-    {
-        // Bảng riêng của plugin (chạy một lần khi kích hoạt).
-        ctx.Migrations.Add("001_create_log",
-            "create table if not exists ${slug.replace(/-/g, "_")}_log (id bigserial primary key, message text not null, created_at timestamptz not null default now())",
-            "drop table if exists ${slug.replace(/-/g, "_")}_log");
-
-        // Chạy sau khi bài được lưu
-        ctx.Hooks.On<PostEvent>(HookNames.PostPublished, async (e, h) =>
-        {
-            var db = h.Services.GetRequiredService<IDbConnectionFactory>();
-            await using var conn = await db.OpenAsync(h.CancellationToken);
-            await using var cmd = conn.CreateCommand();
-            cmd.CommandText = "insert into ${slug.replace(/-/g, "_")}_log (message) values (@m)";
-            var p = cmd.CreateParameter(); p.ParameterName = "m"; p.Value = $"Đã đăng: {e.Post.Title}"; cmd.Parameters.Add(p);
-            await cmd.ExecuteNonQueryAsync(h.CancellationToken);
-        });
-
-        // Filter: thêm dữ liệu vào API bài viết (frontend đọc ở post.extra)
-        ctx.Filters.Add<PostDto>(FilterNames.ApiPostResponse, post =>
-        {
-            post.Extra["${slug}"] = new System.Text.Json.Nodes.JsonObject { ["words"] = post.Excerpt.Split(' ').Length };
-            return post;
-        });
-
-        // Trang settings tự sinh trong admin. Nhãn là khoá dịch trong locales/*.json (CMS dịch theo ngôn ngữ người dùng)
-        ctx.Settings.Register("general", Text.T("${slug}:menu.title"), [
-            new FieldDefinition("greeting", "text", Text.T("${slug}:settings.greeting"), "Xin chào!"),
-        ]);
-        ctx.Admin.AddMenu(new AdminMenuItem("${slug}", Text.T("${slug}:menu.title"), "/${slug}", "manage_options", "puzzle"));
-
-        // Endpoint: GET /api/plugins/${slug}/hello
-        ctx.Endpoints.Map(r => r.MapGet("/hello", async (IPluginSettings settings) =>
-            Results.Ok(new { message = (await settings.GetAsync("${slug}", "general"))["greeting"]?.ToString() })));
-    }
-}
-`);
+    write(path.join(root, "backend", `${cls}Plugin.cs`), pluginSource(name, slug, cls));
   }
 
   if (admin) {
@@ -449,6 +423,25 @@ export default definePlugin({
     }, null, 2) + "\n");
   }
 
-  write(path.join(root, "README.md"), `# ${name}\n\nPlugin cho CMS.\n\n- \`backend/\` — C# (Cms.Plugin.Sdk): hook, filter, migration, endpoint, settings\n- \`admin/src/\` — React (@cms/admin-sdk): trang quản trị, meta box\n- \`frontend/\` — React (@cms/theme-sdk): shortcode, widget, slot, filter\n- \`locales/\` — bản dịch theo khoá (ICU), namespace \`${slug}\`: \`createT("${slug}")\` ở admin, \`Text.T("${slug}:khoá")\` ở backend\n\nLệnh:\n\n- \`npx github:Ecomcx-Jsc/ecomcx-sdk validate\`\n- \`npx github:Ecomcx-Jsc/ecomcx-sdk pack\` → \`dist/${slug}-1.0.0.zip\`\n- \`npx github:Ecomcx-Jsc/ecomcx-sdk deploy --password ... --activate\`\n- \`npx github:Ecomcx-Jsc/ecomcx-sdk dev --password ...\` (tự deploy khi sửa file)\n`);
+  const parts = [
+    backend === "source" && `- \`${cls}.cs\` — logic C#: bảng dữ liệu (EF), hook, endpoint. CMS tự biên dịch khi cài (không cần .NET SDK)`,
+    backend === "project" && "- `backend/` — dự án C# (csproj): build bằng `dotnet build`, CMS nạp DLL",
+    admin && "- `admin/src/` — trang quản trị tự viết (@cms/admin-sdk); settings + menu khai báo trong plugin.json",
+    frontend && "- `frontend/` — hiển thị ngoài website (@cms/theme-sdk): shortcode, widget, slot",
+    (admin || backend === "project") && `- \`locales/\` — bản dịch theo khoá, namespace \`${slug}\``,
+  ].filter(Boolean).join("\n");
+  write(path.join(root, "README.md"), `# ${name}
+
+${parts}
+
+Lệnh (\`npx github:Ecomcx-Jsc/ecomcx-sdk <lệnh>\`):
+
+- \`env up\` (một lần) rồi \`dev\` — cài lên CMS thử, sửa file là cài lại
+- \`check\` — chạy thử như khi cài / nộp Store: manifest, biên dịch, quét bảo mật
+- \`pack\` → \`dist/${slug}-1.0.0.zip\` · \`deploy --activate\` — cài lên CMS thật
+${backend === "source" ? `
+Trang quản trị: menu **${name}** · Form trên website: \`[cms-form plugin="${slug}" table="entries"]\`
+` : ""}`);
+  if (tests && backend) scaffoldTests(root, cls, slug);
   return { root, slug };
 }
