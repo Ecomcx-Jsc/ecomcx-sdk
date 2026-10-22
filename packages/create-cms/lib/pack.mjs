@@ -61,6 +61,8 @@ export async function buildAdmin(dir, outFile, name = "index") {
       "react/jsx-runtime": path.join(sdk, "jsx-runtime" + ext),
       "react/jsx-dev-runtime": path.join(sdk, "jsx-runtime" + ext),
       "@cms/admin-sdk": path.join(sdk, "index" + ext),
+      // defineBlock (file khối dùng chung admin + website): dùng bản đi kèm CLI — plugin không cần cài gì thêm
+      "@cms/content": createRequire(import.meta.url).resolve("@cms/content"),
     },
     logLevel: "warning",
   });
