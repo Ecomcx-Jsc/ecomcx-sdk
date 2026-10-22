@@ -18,7 +18,7 @@ function ProductCard({ data }: BlockProps) { return <div className="product">#{d
 function Products({ data }: BlockProps) { return <ul className="products">{(data.ids as number[]).map((id) => <li key={id}>{id}</li>)}</ul>; }
 function Hello({ attrs }: ShortcodeProps) { return <b>hello {attrs.name}</b>; }
 
-const blocks: Record<string, (p: BlockProps) => any> = { callout: Callout, "product-card": ProductCard, "ecommerce/products": Products };
+const blocks: Record<string, (p: BlockProps) => any> = { "demo/callout": Callout, "product-card": ProductCard, "ecommerce/products": Products };
 const ctx = (extra: Partial<RenderContext> = {}): RenderContext => ({
   site,
   resolve: { shortcode: async (n) => (n === "hello" ? Hello : null), block: async (t) => blocks[t] ?? null },
@@ -39,14 +39,14 @@ for (const file of readdirSync(fixtures).filter((f) => f.endsWith(".json")).sort
 }
 
 test("nút của plugin dùng renderer khối, có nội dung con", async () => {
-  const out = await html({ type: "doc", content: [{ type: "callout", attrs: { tone: "warning" }, content: [{ type: "paragraph", content: [{ type: "text", text: "Chú ý" }] }] }] });
+  const out = await html({ type: "doc", content: [{ type: "demo/callout", attrs: { tone: "warning" }, content: [{ type: "paragraph", content: [{ type: "text", text: "Chú ý" }] }] }] });
   assert.equal(out, '<aside class="callout callout-warning"><p>Chú ý</p></aside>');
 });
 
 test("plugin đã tắt: nút giữ phần chữ bên trong, khối cấp cao nhất bỏ qua", async () => {
   const off = ctx({ resolve: { shortcode: async () => null, block: async () => null } });
   const out = await html({ version: 1, blocks: [
-    { type: "richtext", data: { type: "doc", content: [{ type: "callout", content: [{ type: "paragraph", content: [{ type: "text", text: "Vẫn đọc được" }] }] }, { type: "product-card", attrs: { productId: 1 } }] } },
+    { type: "richtext", data: { type: "doc", content: [{ type: "demo/callout", content: [{ type: "paragraph", content: [{ type: "text", text: "Vẫn đọc được" }] }] }, { type: "product-card", attrs: { productId: 1 } }] } },
     { type: "ecommerce/products", data: { ids: [1] } }] }, off);
   assert.equal(out, "<p>Vẫn đọc được</p>");
 });
@@ -66,8 +66,8 @@ test("URL độc bị vô hiệu ở mọi chỗ", async () => {
 
 test("khối lỗi được bọc bởi boundary", async () => {
   const names: string[] = [];
-  await html({ type: "doc", content: [{ type: "callout" }] }, ctx({ boundary: (name, key, el) => { names.push(name); return <section key={key}>{el}</section>; } }));
-  assert.deepEqual(names, ["Block callout"]);
+  await html({ type: "doc", content: [{ type: "demo/callout" }] }, ctx({ boundary: (name, key, el) => { names.push(name); return <section key={key}>{el}</section>; } }));
+  assert.deepEqual(names, ["Block demo/callout"]);
 });
 
 test("khối defineBlock: website nâng phiên bản + ép kiểu trước khi đưa cho component của plugin", async () => {
@@ -80,4 +80,18 @@ test("khối defineBlock: website nâng phiên bản + ép kiểu trước khi �
   const out = await html({ type: "doc", content: [{ type: "demo/badge", attrs: { color: "red", size: "3" } }] }, c);
   assert.equal(out, '<b class="badge-danger">3</b>');
   assert.deepEqual(seen[0], { size: 3, tone: "danger", _v: 2 });
+});
+
+test("khối bố cục: màu lạ / URL độc bị bỏ, nhúng lạ thành liên kết, nút mở tab mới có noopener", async () => {
+  const out = await html({ type: "doc", content: [
+    { type: "group", attrs: { background: "red;background:url(https://evil.vn/x)", textColor: "#333" }, content: [{ type: "paragraph", content: [{ type: "text", text: "g" }] }] },
+    { type: "button", attrs: { text: "Đi", href: "javascript:alert(1)", target: "_blank" } },
+    { type: "button", attrs: { href: "https://a.vn" } },
+    { type: "embed", attrs: { url: "https://evil.example/embed/1" } },
+    { type: "embed", attrs: { url: "https://youtu.be/dQw4w9WgXcQ" } }] });
+  assert.ok(!out.includes("evil.vn") && out.includes("color:#333"), out);
+  assert.ok(out.includes('href="#"') && out.includes('rel="noopener noreferrer"'), out);
+  assert.equal((out.match(/cms-button"|cms-button /g) ?? []).length, 1, "nút không có chữ không hiện");
+  assert.ok(out.includes('<a href="https://evil.example/embed/1"') && !out.includes('src="https://evil.example'), out);
+  assert.ok(out.includes('src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"'), out);
 });

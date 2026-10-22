@@ -1,5 +1,5 @@
 import { Fragment, type ComponentType, type CSSProperties, type ReactNode } from "react";
-import { normalizeContent, safeUrl, type Block, type BlockDefinition, type ContentDoc, type RichNode } from "@cms/content";
+import { embedInfo, normalizeContent, safeUrl, type Block, type BlockDefinition, type ContentDoc, type RichNode } from "@cms/content";
 import type { BlockProps, Post, ShortcodeProps, Site } from "./types";
 import { cx } from "./utils";
 
@@ -39,6 +39,13 @@ function plainText(node: Node): string {
   if (node.type === "text") return node.text ?? "";
   return (node.content ?? []).map(plainText).join("");
 }
+
+/** Màu do người viết chọn (nhóm, chữ): chỉ nhận dạng màu CSS, không nhận chuỗi tuỳ ý (url(), dấu ;…). */
+const COLOR = /^(#[0-9a-f]{3,8}|(?:rgb|hsl)a?\([\d\s.,%deg/]+\)|[a-z]{3,20}|var\(--[\w-]+\))$/i;
+const safeColor = (v: unknown) => (typeof v === "string" && COLOR.test(v.trim()) ? v.trim() : undefined);
+
+const PADDING: Record<string, string> = { none: "0", small: "0.75rem", medium: "1.5rem", large: "3rem" };
+const TONES: Record<string, string> = { info: "#2563eb", success: "#16a34a", warning: "#d97706", danger: "#dc2626" };
 
 function alignStyle(attrs?: Record<string, any>): CSSProperties | undefined {
   return attrs?.textAlign && attrs.textAlign !== "left" ? { textAlign: attrs.textAlign } : undefined;
@@ -151,6 +158,67 @@ async function renderNode(node: Node, key: string, ctx: RenderContext): Promise<
       const m = String(a.src ?? "").match(/(?:v=|youtu\.be\/|embed\/)([\w-]{11})/);
       const start = Number(a.start) > 0 ? `?start=${Math.floor(Number(a.start))}` : "";
       return m ? <div key={key} className="embed"><iframe src={`https://www.youtube-nocookie.com/embed/${m[1]}${start}`} allowFullScreen loading="lazy" title="YouTube" /></div> : null;
+    }
+    // Bố cục (@cms/content 1.2). Cấu trúc dùng style trực tiếp → mọi theme hiển thị đúng; class để theme tạo kiểu thêm.
+    case "columns": {
+      // Cột co giãn theo tỉ lệ độ rộng; màn hẹp (mỗi cột < 14rem) tự xuống dòng thành một cột — không cần CSS của theme
+      const stack = a.stack !== false;
+      const align = a.verticalAlign === "center" ? "center" : a.verticalAlign === "bottom" ? "flex-end" : "flex-start";
+      const cols = await Promise.all((node.content ?? []).map(async (c, i) => {
+        const w = Number(c.attrs?.width) > 0 ? Number(c.attrs?.width) : 1;
+        const inner = await Promise.all((c.content ?? []).map((cc, j) => renderNode(cc, `${key}-${i}-${j}`, ctx)));
+        return <div key={`${key}-${i}`} className="cms-column" style={{ flex: `${w} 1 0`, minWidth: stack ? "min(100%, 14rem)" : 0 }}>{inner}</div>;
+      }));
+      return <div key={key} className={cx("cms-columns", a.verticalAlign && `cms-columns-${a.verticalAlign}`)} style={{ display: "flex", flexWrap: stack ? "wrap" : "nowrap", gap: "1.5rem", alignItems: align }}>{cols}</div>;
+    }
+    case "column": return <div key={key} className="cms-column">{await children()}</div>;
+    case "group": {
+      const bg = safeColor(a.background), fg = safeColor(a.textColor);
+      const pad = PADDING[a.padding as string] ?? (bg ? PADDING.medium : undefined);
+      return <div key={key} className={cx("cms-group", a.padding && `cms-group-${a.padding}`)} style={{ background: bg, color: fg, padding: pad, borderRadius: bg ? 12 : undefined }}>{await children()}</div>;
+    }
+    case "callout": {
+      const tone = TONES[a.tone as string] ? (a.tone as string) : "info";
+      return (
+        <div key={key} role="note" className={cx("cms-callout", `cms-callout-${tone}`)}
+          style={{ borderLeft: `4px solid ${TONES[tone]}`, background: `color-mix(in srgb, ${TONES[tone]} 8%, transparent)`, padding: "0.75rem 1rem", borderRadius: 8 }}>
+          {a.title && <p className="cms-callout-title" style={{ margin: 0, fontWeight: 600 }}>{a.title}</p>}
+          {await children()}
+        </div>
+      );
+    }
+    case "button": {
+      if (!a.text) return null;
+      const variant = a.variant === "secondary" || a.variant === "outline" ? a.variant : "primary";
+      const target = a.target === "_blank" ? "_blank" : undefined;
+      const rel = new Set(String(a.rel ?? "").toLowerCase().split(/\s+/).filter((x) => /^[a-z-]+$/.test(x)));
+      if (target) { rel.add("noopener"); rel.add("noreferrer"); }
+      const look: CSSProperties = variant === "outline"
+        ? { border: "1px solid var(--cms-button-bg, var(--primary, currentColor))", color: "var(--cms-button-bg, var(--primary, inherit))" }
+        : variant === "secondary"
+          ? { background: "var(--cms-button-secondary-bg, rgba(127,127,127,.15))", color: "inherit" }
+          : { background: "var(--cms-button-bg, var(--primary, #18181b))", color: "var(--cms-button-fg, #fff)" };
+      return (
+        <p key={key} className={cx("cms-buttons", a.align && `cms-buttons-${a.align}`)} style={a.align ? { textAlign: a.align } : undefined}>
+          <a className={cx("cms-button", `cms-button-${variant}`)} href={safeUrl(a.href)} target={target} rel={rel.size ? [...rel].join(" ") : undefined}
+            style={{ display: "inline-block", padding: "0.6em 1.2em", borderRadius: 8, textDecoration: "none", fontWeight: 600, lineHeight: 1.2, ...look }}>{a.text}</a>
+        </p>
+      );
+    }
+    case "embed": {
+      // Khung nhúng chỉ cho nhà cung cấp đã biết; địa chỉ khung do embedInfo dựng → không nhúng được trang tuỳ ý
+      const info = embedInfo(a.url);
+      if (!info) return a.url ? <p key={key} className="cms-embed-link"><a href={safeUrl(a.url)} target="_blank" rel="noopener noreferrer">{a.caption || a.url}</a></p> : null;
+      const box: CSSProperties = info.aspect ? { position: "relative", aspectRatio: String(info.aspect) } : { position: "relative", height: info.height };
+      return (
+        <figure key={key} className={cx("cms-embed", `cms-embed-${info.provider}`)} style={{ maxWidth: info.maxWidth, marginLeft: info.maxWidth ? "auto" : undefined, marginRight: info.maxWidth ? "auto" : undefined }}>
+          <div style={box}>
+            <iframe src={info.src} title={a.caption || info.title} loading="lazy" allowFullScreen referrerPolicy="strict-origin-when-cross-origin"
+              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: 0, borderRadius: 8 }} />
+          </div>
+          {a.caption && <figcaption>{a.caption}</figcaption>}
+        </figure>
+      );
     }
     default: {
       // Nút của plugin trong nội dung soạn thảo (defineBlock) — cùng renderer với khối cấp cao nhất: definePlugin({ blocks })
