@@ -31,6 +31,7 @@ export function validate(dir) {
     if (!okShape) errors.push('translations phải có dạng { "en": { "Chuỗi gốc": "Bản dịch" } }');
   }
   if (!manifest.requires?.cms) warnings.push('Nên khai báo requires.cms, vd ">=1.0.0 <2.0.0"');
+  checkPermissions(manifest.permissions, errors, warnings);
 
   if (kind === "theme") {
     const templates = path.join(dir, "templates");
@@ -95,6 +96,19 @@ function argsOf(ast, out = new Set()) {
 }
 
 /** locales/{ngôn-ngữ}.json: { "khoa": "thông điệp ICU" } — cú pháp ICU, khoá và biến khớp giữa các ngôn ngữ. */
+/** Quyền trong manifest: viết sai → lỗi; quyền toàn phần mà chỉ cần vài domain / thư mục riêng → gợi ý quyền hẹp (CMS ≥ 1.8.0). */
+function checkPermissions(perms, errors, warnings) {
+  if (perms === undefined) return;
+  if (!Array.isArray(perms) || perms.some((p) => typeof p !== "string")) { errors.push('"permissions" phải là mảng chuỗi'); return; }
+  const host = /^network:(\*\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i;
+  for (const p of perms) {
+    const known = ["network", "filesystem", "database:core", "admin:sensitive", "files"].includes(p) || host.test(p) || /^files:\d{1,6}(mb|gb)$/.test(p);
+    if (!known) errors.push(`Quyền không hợp lệ: "${p}" — dùng network:<domain>, network:*.<domain>, files, files:<N>mb, network, filesystem, database:core, admin:sensitive`);
+  }
+  if (perms.includes("network")) warnings.push('Quyền "network" toàn phần bị bộ quét cảnh báo — nếu chỉ gọi vài domain, khai báo "network:<domain>" và gọi qua ctx.Http (CMS ≥ 1.8.0)');
+  if (perms.includes("filesystem")) warnings.push('Quyền "filesystem" toàn phần bị bộ quét cảnh báo — nếu chỉ cần lưu file của plugin, khai báo "files" (hoặc "files:500mb") và dùng ctx.Files (CMS ≥ 1.8.0)');
+}
+
 function checkLocales(dir, errors, warnings) {
   const localesDir = path.join(dir, "locales");
   if (!fs.existsSync(localesDir)) return;
