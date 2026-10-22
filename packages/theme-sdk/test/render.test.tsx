@@ -69,3 +69,15 @@ test("khối lỗi được bọc bởi boundary", async () => {
   await html({ type: "doc", content: [{ type: "callout" }] }, ctx({ boundary: (name, key, el) => { names.push(name); return <section key={key}>{el}</section>; } }));
   assert.deepEqual(names, ["Block callout"]);
 });
+
+test("khối defineBlock: website nâng phiên bản + ép kiểu trước khi đưa cho component của plugin", async () => {
+  const { defineBlock } = await import("@cms/content");
+  const badge = defineBlock({ name: "demo/badge", title: "Nhãn", version: 2, attributes: { tone: { type: "string", enum: ["info", "danger"] }, size: { type: "integer" } },
+    migrate: { 1: ({ color, ...r }) => ({ ...r, tone: color === "red" ? "danger" : "info" }) } });
+  const seen: any[] = [];
+  const Badge = ({ data }: BlockProps) => { seen.push(data); return <b className={`badge-${data.tone}`}>{data.size}</b>; };
+  const c = ctx({ blocks: [badge], resolve: { shortcode: async () => null, block: async (t) => (t === "demo/badge" ? Badge : null) } });
+  const out = await html({ type: "doc", content: [{ type: "demo/badge", attrs: { color: "red", size: "3" } }] }, c);
+  assert.equal(out, '<b class="badge-danger">3</b>');
+  assert.deepEqual(seen[0], { size: 3, tone: "danger", _v: 2 });
+});

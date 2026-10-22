@@ -1,5 +1,5 @@
 import { Fragment, type ComponentType, type CSSProperties, type ReactNode } from "react";
-import { normalizeContent, safeUrl, type Block, type ContentDoc, type NodeSpec, type RichNode } from "@cms/content";
+import { normalizeContent, safeUrl, type Block, type BlockDefinition, type ContentDoc, type RichNode } from "@cms/content";
 import type { BlockProps, Post, ShortcodeProps, Site } from "./types";
 import { cx } from "./utils";
 
@@ -17,8 +17,8 @@ export interface RenderContext {
   };
   /** Bọc component của plugin (lỗi chỉ ẩn phần đó). Mặc định: không bọc. */
   boundary?(name: string, key: string, el: ReactNode): ReactNode;
-  /** Thuộc tính của khối plugin (defineBlock) để chuẩn hoá cùng khối lõi. */
-  nodes?: Record<string, NodeSpec>;
+  /** Khối của plugin (defineBlock) — chuẩn hoá thuộc tính + nâng phiên bản khối lưu bằng bản cũ. */
+  blocks?: readonly BlockDefinition[];
   /** Chữ giao diện (vd "Tải tệp"). */
   labels?: { download?: string };
 }
@@ -203,7 +203,7 @@ function wrap(ctx: RenderContext, name: string, key: string, el: ReactNode): Rea
  * rồi vẽ từng khối. Khối/nút của plugin không có renderer (plugin tắt) → bỏ qua, dữ liệu vẫn nguyên trong DB.
  */
 export async function renderContent(content: ContentDoc | unknown, ctx: RenderContext, transform?: (blocks: Block[]) => Block[] | Promise<Block[]>): Promise<ReactNode[]> {
-  const { doc } = normalizeContent(content, { nodes: ctx.nodes });
+  const { doc } = normalizeContent(content, { blocks: ctx.blocks });
   const blocks = transform ? await transform(doc.blocks) : doc.blocks;
   return Promise.all(blocks.map((b, i) => renderBlock(b, b.id ?? `b${i}`, ctx)));
 }

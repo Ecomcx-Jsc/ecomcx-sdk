@@ -307,8 +307,16 @@ export interface CmsAdmin {
   /** Trình soạn nội dung (@cms/editor): thêm khối/lệnh chèn; dùng chung TipTap của admin. */
   editor: {
     register(pack: EditorExtensionPack): void;
+    /** Khối khai báo bằng defineBlock (CMS ≥ 1.8.0 / admin có @cms/editor ≥ 1.1). */
+    registerBlock?(def: import("@cms/content").BlockDefinition, options?: RegisterBlockOptions): void;
     tiptap: { Node: any; Mark: any; Extension: any; mergeAttributes: (...attrs: any[]) => Record<string, any> };
   };
+}
+
+/** Tuỳ chọn khi đăng ký khối: biểu tượng (component lucide), phần xem trước tuỳ chỉnh trong trình soạn. */
+export interface RegisterBlockOptions {
+  icon?: any;
+  edit?: import("react").ComponentType<{ attrs: Record<string, any>; setAttrs(attrs: Record<string, unknown>): void; selected: boolean; children?: import("react").ReactNode }>;
 }
 
 /** Gói mở rộng trình soạn: node/mark TipTap + lệnh chèn trong slash menu "/". */

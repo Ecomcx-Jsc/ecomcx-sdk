@@ -232,8 +232,10 @@ export interface PluginDefinition {
   filters?: { [K in keyof FilterMap]?: FilterMap[K] };
   /** Lắng nghe action phát ra từ theme/plugin kiểu WordPress (doAction). */
   actions?: Record<string, ((...args: any[]) => void | Promise<void>) | Array<{ handler: (...args: any[]) => void | Promise<void>; priority?: number }>>;
-  /** Renderer cho loại block mới (dùng khi có page builder). */
+  /** Renderer khối của plugin (theo tên khối) — khối cấp cao nhất và khối trong nội dung soạn thảo (defineBlock). */
   blocks?: Record<string, ComponentType<BlockProps>>;
+  /** Định nghĩa khối (defineBlock, file dùng chung với phần admin) — website chuẩn hoá thuộc tính + nâng phiên bản trước khi vẽ. */
+  blockTypes?: import("@cms/content").BlockDefinition[];
   /** File ở gốc website: { "/news-sitemap.xml": handler }. Đường dẫn phải khai báo trong plugin.json → frontend.routes. */
   routes?: Record<string, PluginRoute>;
   /**

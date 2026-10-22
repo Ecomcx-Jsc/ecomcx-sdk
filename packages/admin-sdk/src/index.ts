@@ -18,7 +18,18 @@ export const getMetaBoxes = (postType?: string) => (host().getMetaBoxes ? host()
 export const usePluginUi = () => (host().usePluginUi ? host().usePluginUi!() : { metaBoxes: [], pages: {}, dashboardWidgets: [], postListColumns: [], termMetaBoxes: [], loaded: true, errors: [] });
 export const useApi = <T = any>(path: string | null) => host().useApi<T>(path);
 export const can = (capability: string) => host().can(capability);
-/** Thêm khối cho trình soạn nội dung . */
+/**
+ * Khối cho trình soạn nội dung, khai báo bằng defineBlock (file dùng chung với phần website của plugin):
+ * trình soạn tự có mục slash menu, khung khối và form cài đặt sinh từ attributes. Nhãn "%khoá%" dịch theo
+ * locales của plugin khi tên khối có tiền tố "slug/" (vd "lien-he/callout").
+ */
+export const registerBlock = (def: import("@cms/content").BlockDefinition, options?: import("./types").RegisterBlockOptions) => {
+  const editor = host().editor;
+  if (!editor.registerBlock) throw new Error("registerBlock cần CMS ≥ 1.8.0 (trình soạn hỗ trợ defineBlock)");
+  editor.registerBlock(def, options);
+};
+export { defineBlock, type BlockDefinition, type BlockDefinitionInput, type BlockAttrSpec } from "@cms/content";
+/** Thêm node/mark TipTap cho trình soạn (cấp thấp — khối thường dùng registerBlock). */
 export const registerEditorExtension = (pack: import("./types").EditorExtensionPack) => host().editor.register(pack);
 /** Lớp TipTap dùng chung với admin (không cần cài @tiptap/core trong plugin). */
 export const tiptap = new Proxy({} as CmsAdminTiptap, { get: (_t, k: string) => (host().editor.tiptap as any)[k] });

@@ -1,5 +1,5 @@
 import { ExtensionBoundary, PostPasswordForm } from "./client";
-import { applyFilters, findBlock, findShortcode } from "./runtime";
+import { applyFilters, findBlock, findShortcode, getActiveExtensions } from "./runtime";
 import type { Post, PostContentDoc } from "./types";
 import { getSite } from "./api";
 import { getT } from "./i18n";
@@ -15,8 +15,9 @@ export async function PostContent({ post, content, className }: { post?: Post | 
   }
   if (!doc?.blocks?.length) return null;
   const t = await getT();
+  const blocks = (await getActiveExtensions(site)).flatMap((d) => d.blockTypes ?? []);
   const rendered = await renderContent(doc, {
-    site, post,
+    site, post, blocks,
     resolve: { shortcode: (name) => findShortcode(name, site), block: (type) => findBlock(type, site) },
     labels: { download: t("file.download") },
     boundary: (name, key, el) => <ExtensionBoundary key={key} name={name}>{el}</ExtensionBoundary>,
