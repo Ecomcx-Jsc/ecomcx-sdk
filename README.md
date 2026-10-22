@@ -22,8 +22,11 @@ sdk/
 Sau khi push repo này lên GitHub (`github.com/Ecomcx-Jsc/ecomcx-sdk`), bất kỳ ai cũng có thể chạy ngay lập tức:
 
 ```bash
-# Tạo plugin mới
+# Tạo plugin mới: plugin.json + một file C# (CMS tự biên dịch, tự tạo bảng, trang quản trị, form)
 npx github:Ecomcx-Jsc/ecomcx-sdk plugin "Tên Plugin"
+# Thêm giao diện React riêng khi trang tự sinh không đủ / dự án csproj khi cần thư viện NuGet
+npx github:Ecomcx-Jsc/ecomcx-sdk plugin "Tên Plugin" --admin --frontend
+npx github:Ecomcx-Jsc/ecomcx-sdk plugin "Tên Plugin" --project
 
 # Tạo theme mới
 npx github:Ecomcx-Jsc/ecomcx-sdk theme "Tên Theme"
