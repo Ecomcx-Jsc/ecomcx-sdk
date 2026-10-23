@@ -42,6 +42,9 @@ export function validate(dir) {
     if (!manifest.parent && !hasIndex)
       errors.push(manifest.editing === "blocks" ? "Theme cần templates/index.json hoặc index.tsx (template dự phòng cuối cùng)" : "Theme cần templates/index.tsx (template dự phòng cuối cùng)");
     if (manifest.editing != null && !["code", "hybrid", "blocks"].includes(manifest.editing)) errors.push(`editing "${manifest.editing}" không hợp lệ (code, hybrid, blocks)`);
+    for (const name of Object.keys(manifest.regions ?? {}))
+      if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(name)) errors.push(`regions: tên vùng "${name}" không hợp lệ (chữ thường, số, dấu gạch ngang)`);
+    if (manifest.regions && manifest.editing !== "hybrid") warnings.push('regions chỉ được dùng khi theme.json có "editing": "hybrid"');
     for (const folder of ["templates", "parts"]) {
       const d = path.join(dir, folder);
       if (!fs.existsSync(d)) continue;

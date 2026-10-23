@@ -2,7 +2,7 @@ export * from "./types";
 export * from "./api";
 export * from "./utils";
 export { definePlugin, getPlugin, hasPlugin, applyFilters, doAction, getSlotItems, getSlotComponents, getActiveTheme, getActiveExtensions, BUILTIN_PAGE_TEMPLATES, findShortcode, findWidget, findBlock, findRoute } from "./runtime";
-export { PostContent } from "./content";
+export { PostContent, EditableRegion } from "./content";
 export { Img, imageCandidates, type ImgProps } from "./image";
 export { Menu, WidgetArea, Slot, SearchForm, Pagination, FeaturedImage, PostDate, TermLinks, Comments, LanguageSwitcher } from "./components";
 export { getT, BUILTIN as BUILTIN_STRINGS, type Translator } from "./i18n";

@@ -130,6 +130,8 @@ export interface ThemeManifest {
   pageTemplates?: Record<string, string>;
   /** Cách dựng giao diện: "code" (mặc định, .tsx), "hybrid" (code + vùng sửa được), "blocks" (template/phần dựng bằng khối, sửa trong Trình dựng). */
   editing?: "code" | "hybrid" | "blocks";
+  /** Vùng sửa được của theme hybrid: { header: "Đầu trang" } — vẽ bằng <EditableRegion name="header">, sửa trong Trình dựng. */
+  regions?: Record<string, string>;
   /** Preset kiểu dáng: { colors: { primary: { label, value } | "#hex" }, fontSizes, spacing, fonts }. */
   styles?: Record<string, Record<string, string | { label?: string; value: string }>>;
   /** Biến thể kiểu theo loại khối: { table: [{ name: "bordered", label: "%…%" }] } → class .ecx-is-<name>. */

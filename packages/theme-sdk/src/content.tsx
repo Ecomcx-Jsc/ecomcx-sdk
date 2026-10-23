@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { ExtensionBoundary, PostPasswordForm } from "./client";
 import { applyFilters, findBlock, findShortcode, getActiveExtensions } from "./runtime";
 import type { Post, PostContentDoc, ResolveResult, Site } from "./types";
@@ -21,6 +22,17 @@ export async function PostContent({ post, content, className }: { post?: Post | 
   if (!doc?.blocks?.length) return null;
   const rendered = await renderContent(doc, await contentContext(site, post), (blocks) => applyFilters("post.blocks", blocks, { site, post }, site));
   return <div className={cx(className ?? "entry-content", "ecx-content")}>{rendered}</div>;
+}
+
+/**
+ * Vùng sửa được của theme hybrid (theme.json › regions): có bản sửa trong Trình dựng hoặc `parts/{name}.json` → vẽ khối,
+ * không thì vẽ `children` (bản code của theme). `<EditableRegion name="header" data={data}><Header /></EditableRegion>`
+ */
+export async function EditableRegion({ name, data, className, children }: { name: string; data?: ResolveResult; className?: string; children?: ReactNode }) {
+  const doc = (await getTemplates().catch(() => null))?.parts[name];
+  if (!doc?.blocks?.length) return <>{children}</>;
+  const site = await getSite();
+  return <div className={cx(`ecx-region ecx-region-${name}`, "ecx-content", className)}>{await renderContent(doc, await contentContext(site, data?.post, data))}</div>;
 }
 
 /** Ngữ cảnh vẽ nội dung dùng chung cho bài viết và template khối. */
