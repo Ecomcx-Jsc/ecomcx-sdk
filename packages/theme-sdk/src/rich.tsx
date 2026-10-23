@@ -1,5 +1,5 @@
-import { Fragment, type ComponentType, type CSSProperties, type ReactNode } from "react";
-import { DYNAMIC_NODES, embedInfo, normalizeContent, safeUrl, type Block, type BlockDefinition, type ContentDoc, type RichNode } from "@cms/content";
+import { Fragment, cloneElement, isValidElement, type ComponentType, type CSSProperties, type ReactElement, type ReactNode } from "react";
+import { DYNAMIC_NODES, embedInfo, normalizeContent, safeUrl, styleClass, styleCss, type BlockStyle, type Block, type BlockDefinition, type ContentDoc, type RichNode } from "@cms/content";
 import type { BlockProps, Post, ResolveResult, ShortcodeProps, Site } from "./types";
 import { cx } from "./utils";
 
@@ -30,6 +30,8 @@ export interface RenderContext {
   /** Nội dung template part theo slug (khối templatePart). */
   parts?(slug: string): Promise<ContentDoc | null>;
   partDepth?: number;
+  /** CSS kiểu dáng khối (attrs.style) gom theo class — renderContent ngoài cùng tạo và xuất thành một thẻ <style>. */
+  styles?: Map<string, string>;
 }
 
 // Renderer đọc thuộc tính một cách khoan dung (đã chuẩn hoá ở normalizeContent) → kiểu nới cho gọn
@@ -90,7 +92,50 @@ function renderMarks(text: ReactNode, marks: Node["marks"], key: string): ReactN
   return out;
 }
 
+const SIDES = ["", "Top", "Right", "Bottom", "Left"];
+/** Thuộc tính inline của renderer bị kiểu dáng khối thay thế (inline luôn thắng class → phải bỏ). */
+function overridden(style: BlockStyle): string[] {
+  const keys: string[] = [];
+  if (style.padding) keys.push(...SIDES.map((x) => `padding${x}`));
+  if (style.margin) keys.push(...SIDES.map((x) => `margin${x}`), "marginLeft", "marginRight");
+  if (style.gap) keys.push("gap");
+  if (style.width) keys.push("width");
+  if (style.maxWidth) keys.push("maxWidth");
+  if (style.fontSize) keys.push("fontSize");
+  if (style.lineHeight) keys.push("lineHeight");
+  if (style.fontWeight) keys.push("fontWeight");
+  if (style.textAlign) keys.push("textAlign");
+  if (style.color?.text) keys.push("color");
+  if (style.color?.background) keys.push("background", "backgroundColor");
+  if (style.border) keys.push(...SIDES.map((x) => `border${x}`));
+  if (style.radius) keys.push("borderRadius");
+  return keys;
+}
+
+/** Gắn class kiểu dáng của khối vào phần tử đã vẽ (không có phần tử bọc ngoài → thêm div). */
+function withStyle(el: ReactNode, style: BlockStyle, key: string, ctx: RenderContext): ReactNode {
+  if (el == null || el === false) return el;
+  const cls = styleClass(style);
+  if (ctx.styles && !ctx.styles.has(cls)) ctx.styles.set(cls, styleCss(style, cls));
+  if (isValidElement(el) && el.type !== Fragment && typeof el.type === "string") {
+    const e = el as ReactElement<{ className?: string; style?: CSSProperties }>;
+    let inline = e.props.style;
+    if (inline) {
+      const drop = new Set(overridden(style));
+      inline = Object.fromEntries(Object.entries(inline).filter(([k]) => !drop.has(k))) as CSSProperties;
+    }
+    return cloneElement(e, { className: cx(e.props.className, cls), style: inline });
+  }
+  return <div key={key} className={cls}>{el}</div>;
+}
+
 async function renderNode(node: Node, key: string, ctx: RenderContext): Promise<ReactNode> {
+  const el = await renderNodeInner(node, key, ctx);
+  const style = node.attrs?.style;
+  return style && typeof style === "object" ? withStyle(el, style as BlockStyle, key, ctx) : el;
+}
+
+async function renderNodeInner(node: Node, key: string, ctx: RenderContext): Promise<ReactNode> {
   const children = async () => Promise.all((node.content ?? []).map((c, i) => renderNode(c, `${key}-${i}`, ctx)));
   const a = node.attrs ?? {};
   switch (node.type) {
@@ -291,5 +336,10 @@ function wrap(ctx: RenderContext, name: string, key: string, el: ReactNode): Rea
 export async function renderContent(content: ContentDoc | unknown, ctx: RenderContext, transform?: (blocks: Block[]) => Block[] | Promise<Block[]>): Promise<ReactNode[]> {
   const { doc } = normalizeContent(content, { blocks: ctx.blocks });
   const blocks = transform ? await transform(doc.blocks) : doc.blocks;
-  return Promise.all(blocks.map((b, i) => renderBlock(b, b.id ?? `b${i}`, ctx)));
+  // Lần vẽ ngoài cùng gom CSS kiểu dáng của mọi khối (kể cả phần lồng bên trong) thành một thẻ <style>
+  const own = !ctx.styles;
+  if (own) ctx = { ...ctx, styles: new Map() };
+  const out = await Promise.all(blocks.map((b, i) => renderBlock(b, b.id ?? `b${i}`, ctx)));
+  if (own && ctx.styles!.size) out.unshift(<style key="ecx-styles" data-ecx-styles="">{[...ctx.styles!.values()].join("")}</style>);
+  return out;
 }

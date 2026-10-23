@@ -1,6 +1,6 @@
 {
   "name": "ecomcx-sdk",
-  "version": "1.14.0",
+  "version": "1.15.0",
   "description": "Ecomcx Nexus SDK - Developer Tools, CLI and Libraries for Theme & Plugin Development",
   "type": "module",
   "bin": {
@@ -11,7 +11,7 @@
     "packages/*"
   ],
   "dependencies": {
-    "@cms/content": "github:Ecomcx-Jsc/ecomcx-nexus-content#semver:^1.6",
+    "@cms/content": "github:Ecomcx-Jsc/ecomcx-nexus-content#semver:^1.7",
     "adm-zip": "0.5.18",
     "esbuild": "0.25.12",
     "intl-messageformat": "12.1.3"
