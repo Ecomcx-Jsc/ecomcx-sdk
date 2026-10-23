@@ -59,7 +59,7 @@ const SOCIAL: Record<string, string> = {
 
 /** id của tiêu đề (neo cho mục lục): thuộc tính id, không thì chữ không dấu nối bằng gạch ngang. */
 function headingId(node: Node): string {
-  return node.attrs?.id ?? plainText(node).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/g, "d").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  return node.attrs?.anchor ?? node.attrs?.id ?? plainText(node).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/g, "d").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
 function collectHeadings(blocks: Block[]): Array<{ level: number; id: string; text: string }> {
@@ -136,27 +136,32 @@ function overridden(style: BlockStyle): string[] {
   return keys;
 }
 
-/** Gắn class kiểu dáng của khối vào phần tử đã vẽ (không có phần tử bọc ngoài → thêm div). */
-function withStyle(el: ReactNode, style: BlockStyle, key: string, ctx: RenderContext): ReactNode {
+/**
+ * Gắn kiểu dáng (class `ecx-s-…`), biến thể (`ecx-is-…`), class riêng và neo (id) của khối vào phần tử đã vẽ
+ * (không có phần tử bọc ngoài → thêm div). Giá trị đã được normalizeContent kiểm.
+ */
+function decorate(el: ReactNode, a: Record<string, any>, key: string, ctx: RenderContext): ReactNode {
   if (el == null || el === false) return el;
-  const cls = styleClass(style);
-  if (ctx.styles && !ctx.styles.has(cls)) ctx.styles.set(cls, styleCss(style, cls));
+  const style = a.style && typeof a.style === "object" ? (a.style as BlockStyle) : null;
+  const cls = style ? styleClass(style) : null;
+  if (style && cls && ctx.styles && !ctx.styles.has(cls)) ctx.styles.set(cls, styleCss(style, cls));
+  const extra = cx(cls, a.blockStyle && `ecx-is-${a.blockStyle}`, a.className);
   if (isValidElement(el) && el.type !== Fragment && typeof el.type === "string") {
-    const e = el as ReactElement<{ className?: string; style?: CSSProperties }>;
+    const e = el as ReactElement<{ className?: string; style?: CSSProperties; id?: string }>;
     let inline = e.props.style;
-    if (inline) {
+    if (inline && style) {
       const drop = new Set(overridden(style));
       inline = Object.fromEntries(Object.entries(inline).filter(([k]) => !drop.has(k))) as CSSProperties;
     }
-    return cloneElement(e, { className: cx(e.props.className, cls), style: inline });
+    return cloneElement(e, { className: cx(e.props.className, extra) || undefined, style: inline, id: a.anchor ?? e.props.id });
   }
-  return <div key={key} className={cls}>{el}</div>;
+  return <div key={key} className={extra || undefined} id={a.anchor}>{el}</div>;
 }
 
 async function renderNode(node: Node, key: string, ctx: RenderContext): Promise<ReactNode> {
   const el = await renderNodeInner(node, key, ctx);
-  const style = node.attrs?.style;
-  return style && typeof style === "object" ? withStyle(el, style as BlockStyle, key, ctx) : el;
+  const a = node.attrs;
+  return a && (a.style || a.blockStyle || a.className || a.anchor) ? decorate(el, a, key, ctx) : el;
 }
 
 async function renderNodeInner(node: Node, key: string, ctx: RenderContext): Promise<ReactNode> {

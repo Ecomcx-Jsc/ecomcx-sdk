@@ -59,6 +59,8 @@ export interface Site {
   postsPerPage: number; showOnFront: "posts" | "page"; pageOnFront?: number | null; pageForPosts?: number | null;
   activeTheme: string; themeSettings: JsonObject; activePlugins: string[];
   menuLocations: Record<string, number>; extra: JsonObject;
+  /** Preset kiểu dáng đã gộp (theme.json › styles + bản sửa trong Giao diện › Kiểu dáng) — core sinh biến CSS --ecx-*. */
+  themeStyles?: { colors?: Record<string, string>; fontSizes?: Record<string, string>; spacing?: Record<string, string>; fonts?: Record<string, string> };
   /** false = website yêu cầu máy tìm kiếm không index. */
   indexable?: boolean;
   /** Website chưa qua màn hình cài đặt lần đầu. */
@@ -128,6 +130,10 @@ export interface ThemeManifest {
   pageTemplates?: Record<string, string>;
   /** Cách dựng giao diện: "code" (mặc định, .tsx), "hybrid" (code + vùng sửa được), "blocks" (template/phần dựng bằng khối, sửa trong Trình dựng). */
   editing?: "code" | "hybrid" | "blocks";
+  /** Preset kiểu dáng: { colors: { primary: { label, value } | "#hex" }, fontSizes, spacing, fonts }. */
+  styles?: Record<string, Record<string, string | { label?: string; value: string }>>;
+  /** Biến thể kiểu theo loại khối: { table: [{ name: "bordered", label: "%…%" }] } → class .ecx-is-<name>. */
+  blockStyles?: Record<string, Array<{ name: string; label: string }>>;
   /** Trang theme cần có: kích hoạt theme thì CMS tạo trang còn thiếu. locked = theme vẽ toàn bộ, trình soạn chỉ sửa tiêu đề/đường dẫn/SEO. */
   pages?: Array<{ slug: string; title: string; template?: string; locked?: boolean }>;
   [key: string]: unknown;
