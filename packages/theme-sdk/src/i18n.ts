@@ -6,7 +6,7 @@ import { getActiveTheme } from "./runtime";
 /** Chữ mặc định của các component trong SDK (theme có thể ghi đè trong locales/{code}.json). */
 export const BUILTIN: Record<string, Record<string, string>> = {
   vi: {
-    "search.placeholder": "Tìm kiếm…", "search.button": "Tìm", "search.label": "Từ khoá", "navigation.menu": "Menu",
+    "search.placeholder": "Tìm kiếm…", "search.button": "Tìm", "search.label": "Từ khoá", "navigation.menu": "Menu", "toc.title": "Mục lục",
     "pagination.prev": "« Trước", "pagination.next": "Sau »", "pagination.label": "Phân trang",
     "comments.title": "Bình luận", "comments.closed": "Bình luận đã đóng.",
     "comments.form.title": "Để lại bình luận", "comments.form.content": "Bình luận", "comments.form.name": "Tên",
@@ -27,7 +27,7 @@ export const BUILTIN: Record<string, Record<string, string>> = {
     "file.download": "Tải tệp", "form.submit": "Gửi", "form.sending": "Đang gửi…", "form.error": "Không gửi được, vui lòng thử lại",
   },
   en: {
-    "search.placeholder": "Search…", "search.button": "Search", "search.label": "Keyword", "navigation.menu": "Menu",
+    "search.placeholder": "Search…", "search.button": "Search", "search.label": "Keyword", "navigation.menu": "Menu", "toc.title": "Contents",
     "pagination.prev": "« Previous", "pagination.next": "Next »", "pagination.label": "Pagination",
     "comments.title": "Comments", "comments.closed": "Comments are closed.",
     "comments.form.title": "Leave a comment", "comments.form.content": "Comment", "comments.form.name": "Name",

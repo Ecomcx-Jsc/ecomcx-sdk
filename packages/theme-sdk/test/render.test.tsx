@@ -108,3 +108,16 @@ test("khối động: giao cho ctx.dynamic kèm hàm vẽ con theo ngữ cảnh 
   };
   assert.equal(await html(doc, ctx({ dynamic })), '<div class="q"><ul><li><h3>A</h3></li><li><h3>B</h3></li></ul></div><p>siteTitle</p>');
 });
+
+test("mục lục: tiêu đề H2–H(maxLevel) của cả bài, neo đúng id; khoảng trống preset; màu phủ lạ bị bỏ", async () => {
+  const h = (level: number, text: string) => ({ type: "heading", attrs: { level }, content: [{ type: "text", text }] });
+  const out = await html({ type: "doc", content: [
+    { type: "tableOfContents", attrs: { maxLevel: 3 } }, h(2, "Giới thiệu"), h(3, "Chi tiết"), h(4, "Sâu quá"),
+    { type: "spacer", attrs: { height: "url(x)" } },
+    { type: "cover", attrs: { overlay: "red;}x", src: "javascript:alert(1)" }, content: [{ type: "paragraph" }] },
+  ] }, ctx({ labels: { toc: "Mục lục" } }));
+  assert.ok(out.includes('<nav class="ecx-toc" aria-label="Mục lục">'), out);
+  assert.ok(out.includes('href="#gioi-thieu"') && out.includes('href="#chi-tiet"') && !out.includes("Sâu quá</a>"), out);
+  assert.ok(out.includes('class="ecx-spacer" style="height:1.5rem"'), out);
+  assert.ok(!out.includes("javascript") && !out.includes("red;"), out);
+});

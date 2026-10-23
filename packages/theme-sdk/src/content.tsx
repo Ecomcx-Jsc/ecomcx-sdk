@@ -30,7 +30,7 @@ export async function contentContext(site: Site, post?: Post | null, data?: Reso
   return {
     site, post, data, blocks,
     resolve: { shortcode: (name) => findShortcode(name, site), block: (type) => findBlock(type, site) },
-    labels: { download: t("file.download") },
+    labels: { download: t("file.download"), toc: t("toc.title") },
     boundary: (name, key, el) => <ExtensionBoundary key={key} name={name}>{el}</ExtensionBoundary>,
     dynamic: renderDynamic,
     parts: async (slug) => (await getTemplates().catch(() => null))?.parts[slug] ?? null,

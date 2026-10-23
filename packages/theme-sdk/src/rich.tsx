@@ -1,5 +1,5 @@
 import { Fragment, cloneElement, isValidElement, type ComponentType, type CSSProperties, type ReactElement, type ReactNode } from "react";
-import { DYNAMIC_NODES, embedInfo, normalizeContent, safeUrl, styleClass, styleCss, type BlockStyle, type Block, type BlockDefinition, type ContentDoc, type RichNode } from "@cms/content";
+import { DYNAMIC_NODES, colorCss, embedInfo, normalizeContent, safeUrl, spacingValue, styleClass, styleCss, type BlockStyle, type Block, type BlockDefinition, type ContentDoc, type RichNode } from "@cms/content";
 import type { BlockProps, Post, ResolveResult, ShortcodeProps, Site } from "./types";
 import { cx } from "./utils";
 
@@ -19,8 +19,8 @@ export interface RenderContext {
   boundary?(name: string, key: string, el: ReactNode): ReactNode;
   /** Khối của plugin (defineBlock) — chuẩn hoá thuộc tính + nâng phiên bản khối lưu bằng bản cũ. */
   blocks?: readonly BlockDefinition[];
-  /** Chữ giao diện (vd "Tải tệp"). */
-  labels?: { download?: string };
+  /** Chữ giao diện (vd "Tải tệp", "Mục lục"). */
+  labels?: { download?: string; toc?: string };
   /** Ngữ cảnh template: trang đang xem (khối động postTitle, postContent, query… đọc từ đây). Không có = đang vẽ nội dung bài. */
   data?: ResolveResult;
   /** Vẽ khối động (@cms/content DYNAMIC_NODES). Không có → khối động bị bỏ qua. */
@@ -32,6 +32,10 @@ export interface RenderContext {
   partDepth?: number;
   /** CSS kiểu dáng khối (attrs.style) gom theo class — renderContent ngoài cùng tạo và xuất thành một thẻ <style>. */
   styles?: Map<string, string>;
+  /** Đang vẽ bên trong nhóm nút (`buttons`): nút không bọc thêm đoạn văn. */
+  inButtons?: boolean;
+  /** Tiêu đề của bài (khối mục lục) — renderContent ngoài cùng tính. */
+  headings?: Array<{ level: number; id: string; text: string }>;
 }
 
 // Renderer đọc thuộc tính một cách khoan dung (đã chuẩn hoá ở normalizeContent) → kiểu nới cho gọn
@@ -46,6 +50,26 @@ function parseAttrs(raw: string) {
   const attrs: Record<string, string> = {};
   for (const m of raw.matchAll(/([a-z0-9_-]+)=(?:"([^"]*)"|'([^']*)'|([^\s\]]+))/gi)) attrs[m[1]] = m[2] ?? m[3] ?? m[4] ?? "";
   return attrs;
+}
+
+const SOCIAL: Record<string, string> = {
+  facebook: "Facebook", x: "X", twitter: "X", instagram: "Instagram", youtube: "YouTube", tiktok: "TikTok", linkedin: "LinkedIn", zalo: "Zalo",
+  github: "GitHub", threads: "Threads", pinterest: "Pinterest", telegram: "Telegram", messenger: "Messenger", email: "Email", website: "Website",
+};
+
+/** id của tiêu đề (neo cho mục lục): thuộc tính id, không thì chữ không dấu nối bằng gạch ngang. */
+function headingId(node: Node): string {
+  return node.attrs?.id ?? plainText(node).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/g, "d").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+function collectHeadings(blocks: Block[]): Array<{ level: number; id: string; text: string }> {
+  const out: Array<{ level: number; id: string; text: string }> = [];
+  const walk = (n: Node) => {
+    if (n.type === "heading") out.push({ level: Math.min(6, Math.max(1, Number(n.attrs?.level) || 2)), id: headingId(n), text: plainText(n) });
+    else for (const c of n.content ?? []) walk(c);
+  };
+  for (const b of blocks) if (b.type === "richtext" && b.data) walk(b.data as Node);
+  return out;
 }
 
 function plainText(node: Node): string {
@@ -157,7 +181,7 @@ async function renderNodeInner(node: Node, key: string, ctx: RenderContext): Pro
     case "heading": {
       const level = Math.min(6, Math.max(1, Number(a.level) || 2));
       const Tag = `h${level}` as "h2";
-      const id = a.id ?? plainText(node).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/g, "d").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      const id = headingId(node);
       return <Tag key={key} id={id || undefined} style={alignStyle(a)}>{await children()}</Tag>;
     }
     case "bulletList": return <ul key={key}>{await children()}</ul>;
@@ -259,13 +283,76 @@ async function renderNodeInner(node: Node, key: string, ctx: RenderContext): Pro
         : variant === "secondary"
           ? { background: "var(--ecx-button-secondary-bg, var(--cms-button-secondary-bg, rgba(127,127,127,.15)))", color: "inherit" }
           : { background: "var(--ecx-button-bg, var(--cms-button-bg, var(--primary, #18181b)))", color: "var(--ecx-button-fg, var(--cms-button-fg, #fff))" };
+      const link = (
+        <a key={ctx.inButtons ? key : undefined} className={cx("ecx-button cms-button", `ecx-button-${variant} cms-button-${variant}`)} href={safeUrl(a.href)} target={target} rel={rel.size ? [...rel].join(" ") : undefined}
+          style={{ display: "inline-block", padding: "0.6em 1.2em", borderRadius: 8, textDecoration: "none", fontWeight: 600, lineHeight: 1.2, ...look }}>{a.text}</a>
+      );
+      if (ctx.inButtons) return link;
       return (
-        <p key={key} className={cx("ecx-buttons cms-buttons", a.align && `ecx-buttons-${a.align} cms-buttons-${a.align}`)} style={a.align ? { textAlign: a.align } : undefined}>
-          <a className={cx("ecx-button cms-button", `ecx-button-${variant} cms-button-${variant}`)} href={safeUrl(a.href)} target={target} rel={rel.size ? [...rel].join(" ") : undefined}
-            style={{ display: "inline-block", padding: "0.6em 1.2em", borderRadius: 8, textDecoration: "none", fontWeight: 600, lineHeight: 1.2, ...look }}>{a.text}</a>
-        </p>
+        <p key={key} className={cx("ecx-buttons cms-buttons", a.align && `ecx-buttons-${a.align} cms-buttons-${a.align}`)} style={a.align ? { textAlign: a.align } : undefined}>{link}</p>
       );
     }
+    // Bộ khối cơ bản (@cms/content 1.9)
+    case "spacer":
+      return <div key={key} className="ecx-spacer" style={{ height: spacingValue(a.height ?? "lg") ?? "1.5rem" }} aria-hidden="true" />;
+    case "buttons": {
+      const items = await Promise.all((node.content ?? []).map((c, i) => renderNode(c, `${key}-${i}`, { ...ctx, inButtons: true })));
+      return <div key={key} className={cx("ecx-buttons-group", a.align && `is-${a.align}`)}>{items}</div>;
+    }
+    case "cover": {
+      const src = a.src ? safeUrl(a.src, "") : "";
+      const overlay = colorCss(a.overlay) ?? (src ? "#000" : undefined);
+      return (
+        <div key={key} className={cx("ecx-cover", a.contentAlign && a.contentAlign !== "center" && `is-${a.contentAlign}`, a.fixed && src && "is-fixed")}
+          style={{ minHeight: spacingValue(a.minHeight ?? "400px"), backgroundImage: a.fixed && src ? `url("${src.replace(/["\\()]/g, encodeURIComponent)}")` : undefined }}>
+          {src && !a.fixed && <img className="ecx-cover-img" src={src} alt={a.alt ?? ""} loading="lazy" decoding="async" />}
+          {overlay && <span className="ecx-cover-overlay" aria-hidden="true" style={{ background: overlay, opacity: Math.min(100, Math.max(0, Number(a.opacity ?? 50))) / 100 }} />}
+          <div className="ecx-cover-inner">{await children()}</div>
+        </div>
+      );
+    }
+    case "mediaText": {
+      const width = Math.min(80, Math.max(20, Number(a.width) || 50));
+      return (
+        <div key={key} className={cx("ecx-media-text", a.position === "right" && "is-right", a.verticalAlign && a.verticalAlign !== "center" && `is-${a.verticalAlign}`, a.stack !== false && "is-stack")}
+          style={{ ["--ecx-media-width" as string]: `${width}%` } as CSSProperties}>
+          <figure className="ecx-media-text-media" style={{ margin: 0 }}>{a.src && <img src={safeUrl(a.src, "")} alt={a.alt ?? ""} loading="lazy" decoding="async" />}</figure>
+          <div className="ecx-media-text-content">{await children()}</div>
+        </div>
+      );
+    }
+    case "pullquote":
+      return <figure key={key} className="ecx-pullquote"><blockquote><p>{await children()}</p></blockquote>{a.citation && <figcaption>{a.citation}</figcaption>}</figure>;
+    case "details":
+      return <details key={key} className="ecx-details" open={a.open === true || undefined}><summary>{a.summary || "…"}</summary>{await children()}</details>;
+    case "customHtml":
+      // Máy chủ đã lọc HTML khi người soạn thiếu quyền unfiltered_html (ContentSanitizer)
+      return a.html ? <div key={key} className="ecx-html" dangerouslySetInnerHTML={{ __html: String(a.html) }} /> : null;
+    case "socialLinks": {
+      const links = (Array.isArray(a.links) ? a.links : []).filter((l: any) => l && typeof l.url === "string" && typeof l.service === "string" && /^[a-z0-9-]{1,30}$/.test(l.service));
+      if (!links.length) return null;
+      return (
+        <ul key={key} className={cx("ecx-social", `is-${a.size ?? "medium"}`, a.align && `is-${a.align}`)}>
+          {links.map((l: { service: string; url: string; label?: string }, i: number) => (
+            <li key={i}><a className={`ecx-social-${l.service}`} href={safeUrl(l.url)} target="_blank" rel="noopener noreferrer me">{l.label || SOCIAL[l.service] || l.service}</a></li>
+          ))}
+        </ul>
+      );
+    }
+    case "tableOfContents": {
+      const max = Math.min(4, Math.max(2, Number(a.maxLevel) || 3));
+      const items = (ctx.headings ?? []).filter((h) => h.level >= 2 && h.level <= max && h.id);
+      if (!items.length) return null;
+      const title = a.title || ctx.labels?.toc || "Contents";
+      return (
+        <nav key={key} className="ecx-toc" aria-label={title}>
+          <p className="ecx-toc-title">{title}</p>
+          <ol>{items.map((h, i) => <li key={i} className={`ecx-toc-l${h.level}`} style={h.level > 2 ? { marginLeft: `${h.level - 2}em` } : undefined}><a href={`#${h.id}`}>{h.text}</a></li>)}</ol>
+        </nav>
+      );
+    }
+    case "preformatted":
+      return <pre key={key} className="ecx-pre">{await children()}</pre>;
     case "embed": {
       // Khung nhúng chỉ cho nhà cung cấp đã biết; địa chỉ khung do embedInfo dựng → không nhúng được trang tuỳ ý
       const info = embedInfo(a.url);
@@ -338,7 +425,7 @@ export async function renderContent(content: ContentDoc | unknown, ctx: RenderCo
   const blocks = transform ? await transform(doc.blocks) : doc.blocks;
   // Lần vẽ ngoài cùng gom CSS kiểu dáng của mọi khối (kể cả phần lồng bên trong) thành một thẻ <style>
   const own = !ctx.styles;
-  if (own) ctx = { ...ctx, styles: new Map() };
+  if (own) ctx = { ...ctx, styles: new Map(), headings: ctx.headings ?? collectHeadings(blocks) };
   const out = await Promise.all(blocks.map((b, i) => renderBlock(b, b.id ?? `b${i}`, ctx)));
   if (own && ctx.styles!.size) out.unshift(<style key="ecx-styles" data-ecx-styles="">{[...ctx.styles!.values()].join("")}</style>);
   return out;
