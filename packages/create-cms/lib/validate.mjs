@@ -68,6 +68,16 @@ export function validate(dir) {
       else if (p.template && !["canvas", "full-width"].includes(p.template) && !fs.existsSync(path.join(templates, `${p.template}.tsx`)) && !fs.existsSync(path.join(templates, `${p.template}.ts`)))
         warnings.push(`pages: trang "${p.slug}" dùng template "${p.template}" nhưng không thấy templates/${p.template}.tsx`);
     }
+    const patternsDir = path.join(dir, "patterns");
+    if (fs.existsSync(patternsDir)) for (const f of fs.readdirSync(patternsDir).filter((f) => f.endsWith(".json"))) {
+      if (!/^[a-z0-9][a-z0-9-]{0,63}\.json$/.test(f)) { errors.push(`patterns/${f}: tên file chỉ gồm chữ thường, số, gạch ngang`); continue; }
+      try {
+        const j = JSON.parse(fs.readFileSync(path.join(patternsDir, f), "utf8"));
+        if (!j.title?.trim?.()) errors.push(`patterns/${f}: thiếu title`);
+        if (!j.content || (typeof j.content !== "object")) errors.push(`patterns/${f}: thiếu content (cây khối)`);
+        if (j.category && !/^[a-z][a-z0-9-]{0,30}$/.test(j.category)) errors.push(`patterns/${f}: category "${j.category}" không hợp lệ`);
+      } catch (e) { errors.push(`patterns/${f}: JSON lỗi — ${e.message}`); }
+    }
     if (manifest.screenshot && !fs.existsSync(path.join(dir, manifest.screenshot))) warnings.push(`Không thấy ảnh ${manifest.screenshot}`);
     if (fs.existsSync(path.join(dir, "node_modules"))) warnings.push("node_modules sẽ bị loại khỏi gói");
   } else {

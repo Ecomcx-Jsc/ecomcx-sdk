@@ -138,6 +138,20 @@ export interface PostRowAction {
 /** Danh sách khác (ngoài bài viết) cho plugin mở rộng: người dùng, bình luận, media. */
 export type AdminListName = "users" | "comments" | "media";
 
+/** Mẫu (pattern): đoạn nội dung dựng sẵn, chèn = chép khối vào bài. */
+export interface EditorPattern {
+  /** "slug-plugin/tên". */
+  name: string;
+  /** Chuỗi thường hoặc "%khoá%" (locales/ của plugin). */
+  title: string;
+  description?: string;
+  /** hero, features, cta, pricing, testimonials, faq, team, contact, text, gallery, header, footer… */
+  category: string;
+  keywords?: string;
+  /** Cây khối { type: "doc", content }, mảng khối, hoặc { version, blocks } (@cms/content). */
+  content: unknown;
+}
+
 /** Cột thêm vào danh sách người dùng / bình luận / media. row = một dòng của API admin. */
 export interface ListColumn {
   list: AdminListName;
@@ -367,6 +381,8 @@ export interface CmsAdmin {
     registerBlock?(def: import("@cms/content").BlockDefinition, options?: RegisterBlockOptions): void;
     /** Panel trong tab "Khối" của trình soạn (CMS ≥ 1.10.0). */
     registerBlockPanel?(panel: BlockPanel): void;
+    /** Mẫu — đoạn nội dung dựng sẵn trong tab "Mẫu" của trình chèn (CMS ≥ 1.12.0). */
+    registerPattern?(pattern: EditorPattern): void;
     tiptap: { Node: any; Mark: any; Extension: any; mergeAttributes: (...attrs: any[]) => Record<string, any> };
   };
 }

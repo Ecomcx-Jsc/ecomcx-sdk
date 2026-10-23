@@ -34,6 +34,12 @@ export const registerBlock = (def: import("@cms/content").BlockDefinition, optio
  * CMS cũ (chưa có tab "Khối") → bỏ qua, không lỗi.
  */
 export const registerBlockPanel = (panel: import("./types").BlockPanel) => host().editor.registerBlockPanel?.(panel);
+/**
+ * Thêm mẫu (đoạn dựng sẵn) vào tab "Mẫu" của trình chèn:
+ *   registerPattern({ name: "shop/product-hero", title: "%pattern.hero%", category: "hero", content: { type: "doc", content: [...] } })
+ * CMS cũ (chưa có tab Mẫu) → bỏ qua, không lỗi.
+ */
+export const registerPattern = (pattern: import("./types").EditorPattern) => host().editor.registerPattern?.(pattern);
 export { defineBlock, type BlockDefinition, type BlockDefinitionInput, type BlockAttrSpec } from "@cms/content";
 /** Thêm node/mark TipTap cho trình soạn (cấp thấp — khối thường dùng registerBlock). */
 export const registerEditorExtension = (pack: import("./types").EditorExtensionPack) => host().editor.register(pack);
