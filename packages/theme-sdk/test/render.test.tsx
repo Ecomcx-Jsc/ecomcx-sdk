@@ -95,3 +95,16 @@ test("khối bố cục: màu lạ / URL độc bị bỏ, nhúng lạ thành li
   assert.ok(out.includes('<a href="https://evil.example/embed/1"') && !out.includes('src="https://evil.example'), out);
   assert.ok(out.includes('src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"'), out);
 });
+
+test("khối động: giao cho ctx.dynamic kèm hàm vẽ con theo ngữ cảnh mới; không có ctx.dynamic thì bỏ qua", async () => {
+  const doc = { type: "doc", content: [{ type: "query", content: [{ type: "postTemplate", content: [{ type: "postTitle" }] }] }, { type: "siteTitle" }] };
+  assert.equal(await html(doc), "");
+  const posts = [{ id: 1, title: "A" }, { id: 2, title: "B" }] as any[];
+  const dynamic: RenderContext["dynamic"] = async (node, key, c, children) => {
+    if (node.type === "query") return <div key={key} className="q">{await children({ ...c, query: { posts } })}</div>;
+    if (node.type === "postTemplate") return <ul key={key}>{await Promise.all(c.query!.posts.map(async (p) => <li key={p.id}>{await children({ ...c, post: p })}</li>))}</ul>;
+    if (node.type === "postTitle") return <h3 key={key}>{c.post?.title}</h3>;
+    return <p key={key}>{node.type}</p>;
+  };
+  assert.equal(await html(doc, ctx({ dynamic })), '<div class="q"><ul><li><h3>A</h3></li><li><h3>B</h3></li></ul></div><p>siteTitle</p>');
+});

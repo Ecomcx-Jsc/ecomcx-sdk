@@ -1,6 +1,6 @@
 import { Fragment, type ComponentType, type CSSProperties, type ReactNode } from "react";
-import { embedInfo, normalizeContent, safeUrl, type Block, type BlockDefinition, type ContentDoc, type RichNode } from "@cms/content";
-import type { BlockProps, Post, ShortcodeProps, Site } from "./types";
+import { DYNAMIC_NODES, embedInfo, normalizeContent, safeUrl, type Block, type BlockDefinition, type ContentDoc, type RichNode } from "@cms/content";
+import type { BlockProps, Post, ResolveResult, ShortcodeProps, Site } from "./types";
 import { cx } from "./utils";
 
 /**
@@ -21,10 +21,21 @@ export interface RenderContext {
   blocks?: readonly BlockDefinition[];
   /** Chữ giao diện (vd "Tải tệp"). */
   labels?: { download?: string };
+  /** Ngữ cảnh template: trang đang xem (khối động postTitle, postContent, query… đọc từ đây). Không có = đang vẽ nội dung bài. */
+  data?: ResolveResult;
+  /** Vẽ khối động (@cms/content DYNAMIC_NODES). Không có → khối động bị bỏ qua. */
+  dynamic?(node: RenderNode, key: string, ctx: RenderContext, children: (ctx: RenderContext, nodes?: RenderNode[]) => Promise<ReactNode[]>): Promise<ReactNode>;
+  /** Bài của vòng lặp `query` gần nhất (+ dữ liệu phân trang khi dùng danh sách của trang). */
+  query?: { posts: Post[]; data?: ResolveResult };
+  /** Nội dung template part theo slug (khối templatePart). */
+  parts?(slug: string): Promise<ContentDoc | null>;
+  partDepth?: number;
 }
 
 // Renderer đọc thuộc tính một cách khoan dung (đã chuẩn hoá ở normalizeContent) → kiểu nới cho gọn
 type Node = Omit<RichNode, "attrs" | "content" | "marks"> & { attrs?: Record<string, any>; content?: Node[]; marks?: Array<{ type: string; attrs?: Record<string, any> }> };
+export type RenderNode = Node;
+const DYNAMIC = new Set<string>(DYNAMIC_NODES);
 
 const SHORTCODE = /^\s*\[([a-z0-9_-]+)((?:\s+[a-z0-9_-]+=(?:"[^"]*"|'[^']*'|[^\s\]]+))*)\s*\]\s*$/i;
 const SHORTCODE_INLINE = /\[([a-z0-9_-]+)((?:\s+[a-z0-9_-]+=(?:"[^"]*"|'[^']*'|[^\s\]]+))*)\s*\]/gi;
@@ -226,6 +237,8 @@ async function renderNode(node: Node, key: string, ctx: RenderContext): Promise<
       );
     }
     default: {
+      if (DYNAMIC.has(node.type))
+        return ctx.dynamic ? ctx.dynamic(node, key, ctx, (c, nodes = node.content ?? []) => Promise.all(nodes.map((n, i) => renderNode(n, `${key}-${i}`, c)))) : null;
       // Nút của plugin trong nội dung soạn thảo (defineBlock) — cùng renderer với khối cấp cao nhất: definePlugin({ blocks })
       const Comp = await ctx.resolve.block(node.type);
       const inner = node.content ? await children() : null;

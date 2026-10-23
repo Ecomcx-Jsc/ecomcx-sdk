@@ -3,6 +3,7 @@ import { applyFilters, findBlock, findShortcode, getActiveExtensions } from "./r
 import type { Post, PostContentDoc } from "./types";
 import { getSite } from "./api";
 import { getT } from "./i18n";
+import { renderDynamic } from "./dynamic";
 import { renderContent } from "./rich";
 import { cx } from "./utils";
 
@@ -25,6 +26,7 @@ export async function PostContent({ post, content, className }: { post?: Post | 
     resolve: { shortcode: (name) => findShortcode(name, site), block: (type) => findBlock(type, site) },
     labels: { download: t("file.download") },
     boundary: (name, key, el) => <ExtensionBoundary key={key} name={name}>{el}</ExtensionBoundary>,
+    dynamic: renderDynamic,
   }, (blocks) => applyFilters("post.blocks", blocks, { site, post }, site));
   return <div className={cx(className ?? "entry-content", "ecx-content")}>{rendered}</div>;
 }
