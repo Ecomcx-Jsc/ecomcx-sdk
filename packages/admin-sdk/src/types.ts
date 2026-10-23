@@ -365,6 +365,8 @@ export interface CmsAdmin {
     register(pack: EditorExtensionPack): void;
     /** Khối khai báo bằng defineBlock (CMS ≥ 1.8.0 / admin có @cms/editor ≥ 1.1). */
     registerBlock?(def: import("@cms/content").BlockDefinition, options?: RegisterBlockOptions): void;
+    /** Panel trong tab "Khối" của trình soạn (CMS ≥ 1.10.0). */
+    registerBlockPanel?(panel: BlockPanel): void;
     tiptap: { Node: any; Mark: any; Extension: any; mergeAttributes: (...attrs: any[]) => Record<string, any> };
   };
 }
@@ -373,6 +375,33 @@ export interface CmsAdmin {
 export interface RegisterBlockOptions {
   icon?: any;
   edit?: import("react").ComponentType<{ attrs: Record<string, any>; setAttrs(attrs: Record<string, unknown>): void; selected: boolean; children?: import("react").ReactNode }>;
+}
+
+/** Props của panel plugin trong tab "Khối". */
+export interface BlockPanelProps {
+  /** Loại khối đang chọn (vd "image", "button", "shop/product"). */
+  type: string;
+  attrs: Record<string, any>;
+  /** Đổi thuộc tính của khối (thuộc tính sẵn có hoặc đã khai báo ở `attributes`). */
+  setAttrs(attrs: Record<string, unknown>): void;
+}
+
+/**
+ * Panel thêm vào tab "Khối" của trình soạn khi chọn một khối (như InspectorControls của Gutenberg) — cho khối của chính plugin
+ * hoặc khối lõi / khối plugin khác.
+ */
+export interface BlockPanel {
+  /** Mã duy nhất dạng "slug-plugin/tên" — tiền tố slug dùng để dịch nhãn "%khoá%". */
+  id: string;
+  /** Tiêu đề mục ("%khoá%" dịch theo locales của plugin). */
+  title: string;
+  /** Loại khối áp dụng; bỏ trống = mọi khối. */
+  blocks?: string[];
+  /** Thứ tự (nhỏ đứng trước, mặc định 10). */
+  order?: number;
+  /** Thuộc tính thêm vào khối, vd { lazy: { default: true } } — cần khai báo để trình soạn lưu được (bắt buộc có `blocks`). */
+  attributes?: Record<string, { default?: unknown }>;
+  component: import("react").ComponentType<BlockPanelProps>;
 }
 
 /** Gói mở rộng trình soạn: node/mark TipTap + lệnh chèn trong slash menu "/". */

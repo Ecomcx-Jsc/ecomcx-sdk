@@ -28,6 +28,12 @@ export const registerBlock = (def: import("@cms/content").BlockDefinition, optio
   if (!editor.registerBlock) throw new Error("registerBlock cần CMS ≥ 1.8.0 (trình soạn hỗ trợ defineBlock)");
   editor.registerBlock(def, options);
 };
+/**
+ * Thêm panel vào tab "Khối" của trình soạn cho một số loại khối (kể cả khối lõi như "image", "button") hoặc mọi khối:
+ *   registerBlockPanel({ id: "seo/link-rel", title: "%link.title%", blocks: ["button"], attributes: { sponsored: { default: false } }, component: Panel })
+ * CMS cũ (chưa có tab "Khối") → bỏ qua, không lỗi.
+ */
+export const registerBlockPanel = (panel: import("./types").BlockPanel) => host().editor.registerBlockPanel?.(panel);
 export { defineBlock, type BlockDefinition, type BlockDefinitionInput, type BlockAttrSpec } from "@cms/content";
 /** Thêm node/mark TipTap cho trình soạn (cấp thấp — khối thường dùng registerBlock). */
 export const registerEditorExtension = (pack: import("./types").EditorExtensionPack) => host().editor.register(pack);
