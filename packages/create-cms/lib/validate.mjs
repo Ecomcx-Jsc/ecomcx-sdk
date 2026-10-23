@@ -38,8 +38,21 @@ export function validate(dir) {
 
   if (kind === "theme") {
     const templates = path.join(dir, "templates");
-    if (!manifest.parent && !fs.existsSync(path.join(templates, "index.tsx")) && !fs.existsSync(path.join(templates, "index.ts")))
-      errors.push("Theme cần templates/index.tsx (template dự phòng cuối cùng)");
+    const hasIndex = ["index.tsx", "index.ts", ...(manifest.editing === "blocks" ? ["index.json"] : [])].some((f) => fs.existsSync(path.join(templates, f)));
+    if (!manifest.parent && !hasIndex)
+      errors.push(manifest.editing === "blocks" ? "Theme cần templates/index.json hoặc index.tsx (template dự phòng cuối cùng)" : "Theme cần templates/index.tsx (template dự phòng cuối cùng)");
+    if (manifest.editing != null && !["code", "hybrid", "blocks"].includes(manifest.editing)) errors.push(`editing "${manifest.editing}" không hợp lệ (code, hybrid, blocks)`);
+    for (const folder of ["templates", "parts"]) {
+      const d = path.join(dir, folder);
+      if (!fs.existsSync(d)) continue;
+      for (const f of fs.readdirSync(d).filter((f) => f.endsWith(".json"))) {
+        if (!/^[a-z0-9][a-z0-9-]{0,63}\.json$/.test(f)) errors.push(`${folder}/${f}: tên file chỉ gồm chữ thường, số, gạch ngang`);
+        try { const j = JSON.parse(fs.readFileSync(path.join(d, f), "utf8")); if (!Array.isArray(j.blocks) && j.type !== "doc") errors.push(`${folder}/${f}: không phải nội dung khối ({ version, blocks })`); }
+        catch (e) { errors.push(`${folder}/${f}: JSON lỗi — ${e.message}`); }
+      }
+      if (manifest.editing !== "blocks" && folder === "templates" && fs.readdirSync(d).some((f) => f.endsWith(".json")))
+        warnings.push('templates/*.json chỉ được dùng khi theme.json có "editing": "blocks"');
+    }
     for (const f of manifest.settings ?? []) {
       if (!f.key) errors.push("settings: thiếu key");
       if (!FIELD_TYPES.includes(f.type)) errors.push(`settings.${f.key}: type "${f.type}" không hợp lệ (${FIELD_TYPES.join(", ")})`);

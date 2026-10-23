@@ -1,6 +1,6 @@
 import { cache } from "react";
 import type { ComponentType } from "react";
-import { getSite } from "./api";
+import { getSite, getTemplates } from "./api";
 import type { FilterMap, LayoutProps, PluginDefinition, PluginLoader, ShortcodeProps, Site, TemplateProps, ThemeEntry } from "./types";
 
 interface RuntimeConfig {
@@ -63,10 +63,13 @@ export const getActiveTheme = cache(async (site?: Site): Promise<LoadedTheme> =>
     chain,
     templateNames,
     async resolveTemplate(candidates) {
-      // Mỗi tên template theo thứ tự ưu tiên: theme (con trước cha) → plugin đang bật → template có sẵn của SDK.
+      // Mỗi tên template theo thứ tự ưu tiên: template khối → theme (con trước cha) → plugin đang bật → template có sẵn của SDK.
       // Theme luôn ghi đè được template của plugin; tên cụ thể hơn (single-product) thắng tên chung (single) dù nằm ở plugin.
       const extensions = await getActiveExtensions(s);
+      // Theme dựng bằng khối: template khối (bản sửa trong Trình dựng / templates/*.json) thắng file .tsx cùng tên
+      const blockTemplates = chain[0]?.manifest.editing === "blocks" ? (await getTemplates().catch(() => null))?.templates ?? {} : {};
       for (const name of [...candidates, "index"]) {
+        if (blockTemplates[name]) return { name, Component: (await import("./template-blocks")).default, layout: true };
         for (const theme of chain) {
           const loader = theme.templates[name];
           if (loader) { const mod = (await loader()) as TemplateModule; return { name, Component: mod.default, layout: mod.layout !== false }; }

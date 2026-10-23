@@ -126,6 +126,8 @@ export interface ThemeManifest {
   /** Cỡ ảnh riêng của theme: { "card": { "width": 600, "height": 400, "crop": true } }. */
   imageSizes?: Record<string, { width: number; height?: number; crop?: boolean }>;
   pageTemplates?: Record<string, string>;
+  /** Cách dựng giao diện: "code" (mặc định, .tsx), "hybrid" (code + vùng sửa được), "blocks" (template/phần dựng bằng khối, sửa trong Trình dựng). */
+  editing?: "code" | "hybrid" | "blocks";
   /** Trang theme cần có: kích hoạt theme thì CMS tạo trang còn thiếu. locked = theme vẽ toàn bộ, trình soạn chỉ sửa tiêu đề/đường dẫn/SEO. */
   pages?: Array<{ slug: string; title: string; template?: string; locked?: boolean }>;
   [key: string]: unknown;

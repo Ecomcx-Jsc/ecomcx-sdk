@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { c, pascal, slugify, write, findCmsRepo } from "./util.mjs";
 
-export function scaffoldTheme(name, { parent, dir } = {}) {
+export function scaffoldTheme(name, { parent, dir, blocks = false } = {}) {
   const slug = slugify(name);
   const root = path.resolve(dir ?? slug);
   if (fs.existsSync(root) && fs.readdirSync(root).length) throw new Error(`Thư mục ${root} đã tồn tại và không rỗng`);
@@ -10,7 +10,8 @@ export function scaffoldTheme(name, { parent, dir } = {}) {
   write(path.join(root, "theme.json"), JSON.stringify({
     name, slug, version: "1.0.0", author: "", description: `Theme ${name}`,
     ...(parent ? { parent } : {}),
-    requires: { cms: ">=1.8.0 <2.0.0" },
+    requires: { cms: blocks ? ">=1.11.0 <2.0.0" : ">=1.8.0 <2.0.0" },
+    ...(blocks ? { editing: "blocks" } : {}),
     // Nhãn trong admin: "%khoá%" → locales/{vi,en}.json của theme (CMS ≥ 1.8.0)
     menuLocations: { primary: "%admin.menu.primary%", footer: "%admin.menu.footer%" },
     widgetAreas: { sidebar: "%admin.widgets.sidebar%" },
@@ -44,13 +45,14 @@ export function scaffoldTheme(name, { parent, dir } = {}) {
     include: ["**/*.ts", "**/*.tsx"],
   }, null, 2) + "\n");
 
-  if (!parent) {
+  if (blocks && !parent) scaffoldBlockFiles(root);
+  else if (!parent) {
     write(path.join(root, "layout.tsx"), `
 import "./styles.css";
 import type { CSSProperties } from "react";
 import { Menu, setting, type LayoutProps } from "@cms/theme-sdk";
 
-/** Khung chung của mọi trang (header, footer). Tương đương header.php + footer.php. */
+/** Khung chung của mọi trang (header, footer). */
 export default function Layout({ site, settings, children }: LayoutProps) {
   return (
     <div className="site" style={{ "--primary": setting(settings, "primaryColor", "#0ea5e9") } as CSSProperties}>
@@ -159,6 +161,48 @@ export default definePlugin({
 `);
   write(path.join(root, "README.md"), `# ${name}\n\nTheme cho CMS.\n\n- \`npx github:Ecomcx-Jsc/ecomcx-sdk validate\` — kiểm tra theme\n- \`npx github:Ecomcx-Jsc/ecomcx-sdk pack\` — đóng gói thành zip để upload trong Giao diện › Thêm mới\n- \`npx github:Ecomcx-Jsc/ecomcx-sdk dev --password ...\` — tự đóng gói và cài lên CMS local mỗi khi sửa file\n`);
   return { root, slug };
+}
+
+const doc = (...content) => JSON.stringify({ version: 1, blocks: [{ id: "main", type: "richtext", data: { type: "doc", content } }] }, null, 2) + "\n";
+const p = (text) => ({ type: "paragraph", content: [{ type: "text", text }] });
+const part = (slug, tagName) => ({ type: "templatePart", attrs: { slug, tagName } });
+const main = (...content) => ({ type: "group", attrs: { padding: "none" }, content });
+
+/** Theme dựng bằng khối: layout chỉ là khung trơn; header, footer, từng template là JSON khối — sửa trong Giao diện › Trình dựng. */
+function scaffoldBlockFiles(root) {
+  write(path.join(root, "layout.tsx"), `
+import "./styles.css";
+import type { CSSProperties } from "react";
+import { setting, type LayoutProps } from "@cms/theme-sdk";
+
+/** Khung trơn: header, footer và nội dung từng trang là khối (parts/, templates/), sửa trong Giao diện › Trình dựng. */
+export default function Layout({ settings, children }: LayoutProps) {
+  return <div className="site" style={{ "--primary": setting(settings, "primaryColor", "#0ea5e9") } as CSSProperties}>{children}</div>;
+}
+`);
+  write(path.join(root, "styles.css"), `
+body { margin: 0; font-family: system-ui, sans-serif; line-height: 1.6; }
+a { color: var(--primary); }
+.ecx-template > * { box-sizing: border-box; max-width: 960px; margin-inline: auto; padding-inline: 16px; }
+.ecx-template-part-header { padding-block: 16px; }
+.ecx-template-part-footer { margin-top: 48px; padding-block: 24px; }
+`);
+  write(path.join(root, "parts", "header.json"), doc({ type: "columns", attrs: { verticalAlign: "center" }, content: [
+    { type: "column", content: [{ type: "siteTitle" }] },
+    { type: "column", content: [{ type: "navigation", attrs: { location: "primary" } }] },
+  ] }));
+  write(path.join(root, "parts", "footer.json"), doc({ type: "copyright" }));
+  write(path.join(root, "templates", "index.json"), doc(part("header", "header"), main(
+    { type: "query", attrs: { inherit: true }, content: [
+      { type: "postTemplate", content: [{ type: "postTitle", attrs: { level: 2, link: true } }, { type: "postDate" }, { type: "postExcerpt" }] },
+      { type: "pagination" },
+      { type: "queryEmpty", content: [p("Chưa có bài viết.")] },
+    ] }), part("footer", "footer")));
+  write(path.join(root, "templates", "single.json"), doc(part("header", "header"), main(
+    { type: "postTitle" }, { type: "postDate" }, { type: "featuredImage" }, { type: "postContent" }, { type: "postTerms" }, { type: "comments" }), part("footer", "footer")));
+  write(path.join(root, "templates", "page.json"), doc(part("header", "header"), main({ type: "postTitle" }, { type: "postContent" }), part("footer", "footer")));
+  write(path.join(root, "templates", "404.json"), doc(part("header", "header"), main(
+    { type: "heading", attrs: { level: 1 }, content: [{ type: "text", text: "Không tìm thấy trang" }] }, { type: "search" }), part("footer", "footer")));
 }
 
 /**

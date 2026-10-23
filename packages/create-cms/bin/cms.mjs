@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // create-cms — tạo, kiểm tra, đóng gói và triển khai theme/plugin cho CMS.
-//   create-cms theme "Tên" [--parent default] [--dir x]
+//   create-cms theme "Tên" [--parent default] [--blocks] [--dir x]
 //   create-cms plugin "Tên" [--admin] [--frontend] [--project] [--no-backend] [--tests] [--dir x]
 //   create-cms validate [thư-mục]
 //   create-cms upgrade [thư-mục]
@@ -20,7 +20,7 @@ import { env, findEnv } from "../lib/env.mjs";
 
 const HELP = `${c.bold("create-cms")} — công cụ viết theme/plugin cho CMS
 
-  ${c.cyan('theme "Tên"')} [--parent default]      tạo theme (child theme với --parent)
+  ${c.cyan('theme "Tên"')} [--parent default]      tạo theme (child theme với --parent; --blocks: dựng bằng khối, sửa trong Trình dựng)
   ${c.cyan('plugin "Tên"')} [--admin] [--frontend] [--tests]   tạo plugin: plugin.json + một file C# (CMS tự biên dịch)
                                       --admin / --frontend: thêm giao diện React riêng · --project: dự án csproj · --no-backend
   ${c.cyan("validate")} [thư-mục]                  kiểm tra theme.json / plugin.json
@@ -98,7 +98,7 @@ try {
       const name = rest[0];
       if (!name) throw new Error(`Thiếu tên: create-cms ${cmd} "Tên ${cmd}"`);
       const { root } = cmd === "theme"
-        ? scaffoldTheme(name, { parent: args.parent, dir: args.dir })
+        ? scaffoldTheme(name, { parent: args.parent, dir: args.dir, blocks: !!args.blocks })
         : scaffoldPlugin(name, { backend: args["no-backend"] ? false : args.project ? "project" : "source", admin: !!args.admin, frontend: !!args.frontend, tests: !!args.tests, dir: args.dir });
       console.log(c.green(`✓ Đã tạo ${cmd} ở ${path.relative(process.cwd(), root)}`));
       console.log(c.dim(`  cd ${path.relative(process.cwd(), root)} && npx github:Ecomcx-Jsc/ecomcx-sdk dev`));

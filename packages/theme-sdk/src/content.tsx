@@ -1,10 +1,10 @@
 import { ExtensionBoundary, PostPasswordForm } from "./client";
 import { applyFilters, findBlock, findShortcode, getActiveExtensions } from "./runtime";
-import type { Post, PostContentDoc } from "./types";
-import { getSite } from "./api";
+import type { Post, PostContentDoc, ResolveResult, Site } from "./types";
+import { getSite, getTemplates } from "./api";
 import { getT } from "./i18n";
 import { renderDynamic } from "./dynamic";
-import { renderContent } from "./rich";
+import { renderContent, type RenderContext } from "./rich";
 import { cx } from "./utils";
 
 /**
@@ -19,14 +19,20 @@ export async function PostContent({ post, content, className }: { post?: Post | 
     return <div className={cx(className ?? "entry-content", "ecx-content")}><PostPasswordForm postId={post.id} labels={{ intro: t("password.intro"), label: t("password.label"), submit: t("password.submit"), wrong: t("password.wrong") }} /></div>;
   }
   if (!doc?.blocks?.length) return null;
+  const rendered = await renderContent(doc, await contentContext(site, post), (blocks) => applyFilters("post.blocks", blocks, { site, post }, site));
+  return <div className={cx(className ?? "entry-content", "ecx-content")}>{rendered}</div>;
+}
+
+/** Ngữ cảnh vẽ nội dung dùng chung cho bài viết và template khối. */
+export async function contentContext(site: Site, post?: Post | null, data?: ResolveResult): Promise<RenderContext> {
   const t = await getT();
   const blocks = (await getActiveExtensions(site)).flatMap((d) => d.blockTypes ?? []);
-  const rendered = await renderContent(doc, {
-    site, post, blocks,
+  return {
+    site, post, data, blocks,
     resolve: { shortcode: (name) => findShortcode(name, site), block: (type) => findBlock(type, site) },
     labels: { download: t("file.download") },
     boundary: (name, key, el) => <ExtensionBoundary key={key} name={name}>{el}</ExtensionBoundary>,
     dynamic: renderDynamic,
-  }, (blocks) => applyFilters("post.blocks", blocks, { site, post }, site));
-  return <div className={cx(className ?? "entry-content", "ecx-content")}>{rendered}</div>;
+    parts: async (slug) => (await getTemplates().catch(() => null))?.parts[slug] ?? null,
+  };
 }

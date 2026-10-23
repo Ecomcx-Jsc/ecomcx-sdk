@@ -1,5 +1,5 @@
 import { createFetchKit, isFetchKitError } from "next-fetch-kit";
-import type { CommentPage, Menu, Post, ResolveResult, Site, Term, WidgetInstance } from "./types";
+import type { PostContentDoc, CommentPage, Menu, Post, ResolveResult, Site, Term, WidgetInstance } from "./types";
 import { getRequestLocale } from "./locale";
 
 /**
@@ -141,6 +141,10 @@ export const getPost = async (type: string, slug: string, locale?: string) =>
   cmsFetch<Post>(`/posts/${type}/${encodeURIComponent(slug)}`, { tags: ["posts"], query: clean({ locale: await loc(locale) }) }).catch(() => null);
 export const getTerms = async (taxonomy: string, hideEmpty = true, locale?: string) =>
   cmsFetch<Term[]>(`/terms/${taxonomy}`, { tags: ["terms"], query: clean({ hideEmpty, locale: await loc(locale) }) });
+/** Template / phần dựng bằng khối của theme đang dùng (bản sửa trong Trình dựng thắng bản của theme). */
+export const getTemplates = () =>
+  cmsFetch<{ theme: string; templates: Record<string, PostContentDoc>; parts: Record<string, PostContentDoc> }>("/templates", { tags: ["templates"] });
+
 export const getMenu = async (location: string, locale?: string) =>
   cmsFetch<Menu | null>(`/menus/${location}`, { tags: ["menus"], query: clean({ locale: await loc(locale) }) });
 export const getMenuById = (id: number) => cmsFetch<Menu | null>(`/menus/id/${id}`, { tags: ["menus"] });
