@@ -2,6 +2,7 @@ import { Fragment, cloneElement, isValidElement, type ComponentType, type CSSPro
 import { DYNAMIC_NODES, colorCss, embedInfo, normalizeContent, safeUrl, spacingValue, styleClass, styleCss, type BlockStyle, type Block, type BlockDefinition, type ContentDoc, type RichNode } from "@cms/content";
 import type { BlockProps, Post, ResolveResult, ShortcodeProps, Site } from "./types";
 import { cx } from "./utils";
+import { SOCIAL_ICONS } from "./social-icons";
 
 /**
  * Vẽ nội dung (định dạng của CMS — @cms/content) thành React, không phụ thuộc trình soạn.
@@ -239,7 +240,10 @@ async function renderNodeInner(node: Node, key: string, ctx: RenderContext): Pro
       // Hàng đầu toàn ô tiêu đề → <thead>
       const rows = await children();
       const head = node.content?.[0]?.content?.length && node.content[0].content.every((c) => c.type === "tableHeader");
-      return <div key={key} className="ecx-table table-wrap"><table>{head && <thead>{rows[0]}</thead>}<tbody>{head ? rows.slice(1) : rows}</tbody></table></div>;
+      // Hàng cuối là chân bảng (attrs.footer) → <tfoot>
+      const foot = a.footer === true && rows.length > (head ? 2 : 1);
+      const body = rows.slice(head ? 1 : 0, foot ? -1 : undefined);
+      return <div key={key} className="ecx-table table-wrap"><table className={a.fixed ? "is-fixed" : undefined}>{head && <thead>{rows[0]}</thead>}<tbody>{body}</tbody>{foot && <tfoot>{rows.at(-1)}</tfoot>}</table></div>;
     }
     case "tableRow": return <tr key={key}>{await children()}</tr>;
     case "tableHeader": return <th key={key} colSpan={a.colspan > 1 ? a.colspan : undefined} rowSpan={a.rowspan > 1 ? a.rowspan : undefined}>{await children()}</th>;
@@ -337,10 +341,16 @@ async function renderNodeInner(node: Node, key: string, ctx: RenderContext): Pro
       const links = (Array.isArray(a.links) ? a.links : []).filter((l: any) => l && typeof l.url === "string" && typeof l.service === "string" && /^[a-z0-9-]{1,30}$/.test(l.service));
       if (!links.length) return null;
       return (
-        <ul key={key} className={cx("ecx-social", `is-${a.size ?? "medium"}`, a.align && `is-${a.align}`)}>
-          {links.map((l: { service: string; url: string; label?: string }, i: number) => (
-            <li key={i}><a className={`ecx-social-${l.service}`} href={safeUrl(l.url)} target="_blank" rel="noopener noreferrer me">{l.label || SOCIAL[l.service] || l.service}</a></li>
-          ))}
+        <ul key={key} className={cx("ecx-social", `is-${a.size ?? "medium"}`, a.align && `is-${a.align}`, a.showLabels && "has-labels")}>
+          {links.map((l: { service: string; url: string; label?: string }, i: number) => {
+            const name = l.label || SOCIAL[l.service] || l.service;
+            return (
+              <li key={i}><a className={`ecx-social-${l.service}`} href={safeUrl(l.url)} target="_blank" rel="noopener noreferrer me" aria-label={a.showLabels ? undefined : name} title={name}>
+                <svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" aria-hidden="true"><path d={SOCIAL_ICONS[l.service] ?? SOCIAL_ICONS.website} fillRule={SOCIAL_ICONS[l.service] && !["email", "website", "linkedin"].includes(l.service) ? undefined : "evenodd"} /></svg>
+                {a.showLabels && <span>{name}</span>}
+              </a></li>
+            );
+          })}
         </ul>
       );
     }
