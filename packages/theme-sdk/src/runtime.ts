@@ -23,16 +23,24 @@ function runtime(): RuntimeConfig {
 
 export const FALLBACK_THEME = "default";
 
-/** Template có sẵn của SDK, dùng khi cả theme lẫn plugin không có (trang đăng nhập/đăng ký của core). */
-const BUILTIN_TEMPLATES: Record<string, () => Promise<{ default: ComponentType<TemplateProps> }>> = {
+type TemplateModule = { default: ComponentType<TemplateProps>; layout?: boolean };
+
+/** Template có sẵn của SDK, dùng khi cả theme lẫn plugin không có: trang đăng nhập/đăng ký, template trang canvas / full-width. */
+const BUILTIN_TEMPLATES: Record<string, () => Promise<TemplateModule>> = {
   auth: () => import("./auth-pages"),
+  canvas: () => import("./page-canvas"),
+  "full-width": () => import("./page-full-width"),
 };
+
+/** Tên template trang có sẵn (theme có template cùng tên thì dùng của theme). */
+export const BUILTIN_PAGE_TEMPLATES = ["canvas", "full-width"] as const;
 
 export interface LoadedTheme {
   slug: string;
   chain: ThemeEntry[];
   templateNames: string[];
-  resolveTemplate(candidates: string[]): Promise<{ name: string; Component: ComponentType<TemplateProps> }>;
+  /** layout = false: template tự vẽ cả trang, không bọc trong layout của theme (`export const layout = false` trong file template). */
+  resolveTemplate(candidates: string[]): Promise<{ name: string; Component: ComponentType<TemplateProps>; layout: boolean }>;
   layout(): Promise<ComponentType<LayoutProps> | null>;
 }
 
@@ -61,14 +69,14 @@ export const getActiveTheme = cache(async (site?: Site): Promise<LoadedTheme> =>
       for (const name of [...candidates, "index"]) {
         for (const theme of chain) {
           const loader = theme.templates[name];
-          if (loader) return { name, Component: (await loader()).default };
+          if (loader) { const mod = (await loader()) as TemplateModule; return { name, Component: mod.default, layout: mod.layout !== false }; }
         }
         for (const d of extensions) {
           const Component = d.templates?.[name];
-          if (Component) return { name, Component };
+          if (Component) return { name, Component, layout: (Component as { layout?: boolean }).layout !== false };
         }
         const builtin = BUILTIN_TEMPLATES[name];
-        if (builtin) return { name, Component: (await builtin()).default };
+        if (builtin) { const mod = await builtin(); return { name, Component: mod.default, layout: mod.layout !== false }; }
       }
       throw new Error(`Theme "${slug}" thiếu templates/index.tsx`);
     },

@@ -123,9 +123,11 @@ export interface ThemeManifest {
   name: string; slug: string; version: string; author?: string; description?: string; parent?: string | null;
   menuLocations?: Record<string, string>; widgetAreas?: Record<string, string>; supports?: string[];
   settings?: Array<{ key: string; type: string; label: string; default?: JsonValue; options?: string[]; section?: string; help?: string }>;
-  /** Cỡ ảnh riêng của theme (giống add_image_size): { "card": { "width": 600, "height": 400, "crop": true } }. */
+  /** Cỡ ảnh riêng của theme: { "card": { "width": 600, "height": 400, "crop": true } }. */
   imageSizes?: Record<string, { width: number; height?: number; crop?: boolean }>;
   pageTemplates?: Record<string, string>;
+  /** Trang theme cần có: kích hoạt theme thì CMS tạo trang còn thiếu. locked = theme vẽ toàn bộ, trình soạn chỉ sửa tiêu đề/đường dẫn/SEO. */
+  pages?: Array<{ slug: string; title: string; template?: string; locked?: boolean }>;
   [key: string]: unknown;
 }
 
@@ -245,7 +247,7 @@ export interface PluginDefinition {
    */
   exports?: Record<string, unknown>;
   /**
-   * Template của plugin (trang sản phẩm, giỏ hàng, tài khoản…). Theme có template cùng tên thì dùng của theme.
+   * Template của plugin (trang sản phẩm, giỏ hàng, tài khoản…). Gán `Component.layout = false` để không bọc trong layout của theme. Theme có template cùng tên thì dùng của theme.
    * Ưu tiên theo danh sách template của trang: tên cụ thể hơn thắng.
    */
   templates?: Record<string, ComponentType<TemplateProps>>;

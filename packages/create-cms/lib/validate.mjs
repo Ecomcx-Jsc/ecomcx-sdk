@@ -45,6 +45,16 @@ export function validate(dir) {
       if (!FIELD_TYPES.includes(f.type)) errors.push(`settings.${f.key}: type "${f.type}" không hợp lệ (${FIELD_TYPES.join(", ")})`);
       if (f.type === "select" && !f.options?.length) errors.push(`settings.${f.key}: select cần options`);
     }
+    const pageSlugs = new Set();
+    for (const p of manifest.pages ?? []) {
+      if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(p.slug ?? "")) errors.push(`pages: slug "${p.slug}" không hợp lệ (chữ thường, số, gạch ngang)`);
+      else if (pageSlugs.has(p.slug)) errors.push(`pages: slug "${p.slug}" bị khai báo hai lần`);
+      pageSlugs.add(p.slug);
+      if (!p.title?.trim()) errors.push(`pages: trang "${p.slug}" thiếu title`);
+      if (p.template != null && !/^[a-z0-9][a-z0-9-]{0,63}$/.test(p.template)) errors.push(`pages: template "${p.template}" của trang "${p.slug}" không hợp lệ`);
+      else if (p.template && !["canvas", "full-width"].includes(p.template) && !fs.existsSync(path.join(templates, `${p.template}.tsx`)) && !fs.existsSync(path.join(templates, `${p.template}.ts`)))
+        warnings.push(`pages: trang "${p.slug}" dùng template "${p.template}" nhưng không thấy templates/${p.template}.tsx`);
+    }
     if (manifest.screenshot && !fs.existsSync(path.join(dir, manifest.screenshot))) warnings.push(`Không thấy ảnh ${manifest.screenshot}`);
     if (fs.existsSync(path.join(dir, "node_modules"))) warnings.push("node_modules sẽ bị loại khỏi gói");
   } else {
