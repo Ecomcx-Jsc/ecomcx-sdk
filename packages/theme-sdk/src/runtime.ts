@@ -102,8 +102,8 @@ export const getActiveExtensions = cache(async (site?: Site): Promise<PluginDefi
 
 /**
  * Hàm mà plugin đang bật công bố qua definePlugin({ exports }). null nếu plugin chưa cài/chưa bật — luôn kiểm tra:
- *   const woo = await getPlugin<WooApi>("woo");
- *   if (woo) cart = await woo.getCart();
+ *   const shop = await getPlugin<ShopApi>("shop");
+ *   if (shop) cart = await shop.getCart();
  * Chỉ dùng phía server (Server Component, route, generateMetadata). Component client nhận dữ liệu qua props.
  */
 export async function getPlugin<T = Record<string, unknown>>(slug: string, site?: Site): Promise<T | null> {
@@ -115,7 +115,7 @@ export async function getPlugin<T = Record<string, unknown>>(slug: string, site?
   catch (e) { console.error(`[cms] Không nạp được plugin frontend "${slug}"`, e); return null; }
 }
 
-/** Plugin có đang bật không — tương đương is_plugin_active() của WordPress. */
+/** Plugin có đang bật không. */
 export async function hasPlugin(slug: string, site?: Site): Promise<boolean> {
   return (site ?? (await getSite())).activePlugins.includes(slug);
 }
@@ -202,7 +202,7 @@ export async function applyFilters(name: string, value: any, ctx?: any, site?: S
   return v;
 }
 
-/** Kích hoạt action kiểu do_action của WordPress tới các plugin/theme đang bật. */
+/** Phát action tới các plugin/theme đang bật. */
 export async function doAction(name: string, arg?: any, site?: Site): Promise<void> {
   for (const d of await getActiveExtensions(site)) {
     const raw = (d as any).actions?.[name];

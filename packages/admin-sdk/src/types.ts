@@ -70,7 +70,7 @@ export interface MetaBox {
 }
 
 /**
- * Sidebar riêng của plugin trong trình soạn bài (PluginSidebar + PinnedItems của WordPress).
+ * Sidebar riêng của plugin trong trình soạn bài (ghim được lên thanh đầu trang).
  * Sidebar chỉ hiện một panel mỗi lúc: "Cài đặt" của core hoặc một sidebar plugin; nút trên thanh hành động để chuyển qua lại.
  * Panel luôn được giữ mount (chỉ ẩn khi không mở) nên plugin vẫn phân tích/lưu meta khi người dùng không xem.
  */
@@ -138,7 +138,7 @@ export interface PostRowAction {
 /** Danh sách khác (ngoài bài viết) cho plugin mở rộng: người dùng, bình luận, media. */
 export type AdminListName = "users" | "comments" | "media";
 
-/** Cột thêm vào danh sách người dùng / bình luận / media (manage_users_columns… của WordPress). row = một dòng của API admin. */
+/** Cột thêm vào danh sách người dùng / bình luận / media. row = một dòng của API admin. */
 export interface ListColumn {
   list: AdminListName;
   id: string;
@@ -171,7 +171,7 @@ export interface ListBulkAction {
   priority?: number;
 }
 
-/** Thao tác hàng loạt trên danh sách bài (hiện khi chọn nhiều dòng) — bulk_actions của WordPress. */
+/** Thao tác hàng loạt trên danh sách bài (hiện khi chọn nhiều dòng). */
 export interface PostBulkAction {
   id: string;
   title: string;
@@ -205,7 +205,7 @@ export interface UserProfileBoxProps {
   isSelf: boolean;
 }
 
-/** Hộp thêm vào trang sửa thành viên và "Hồ sơ của bạn" (dữ liệu lưu trong user meta) — show_user_profile của WordPress. */
+/** Hộp thêm vào trang sửa thành viên và "Hồ sơ của bạn" (dữ liệu lưu trong user meta). */
 export interface UserProfileBox {
   id: string;
   title: string;
@@ -387,7 +387,7 @@ export interface BlockPanelProps {
 }
 
 /**
- * Panel thêm vào tab "Khối" của trình soạn khi chọn một khối (như InspectorControls của Gutenberg) — cho khối của chính plugin
+ * Panel thêm vào tab "Khối" của trình soạn khi chọn một khối — cho khối của chính plugin
  * hoặc khối lõi / khối plugin khác.
  */
 export interface BlockPanel {

@@ -107,8 +107,8 @@ async function renderNode(node: Node, key: string, ctx: RenderContext): Promise<
     case "bulletList": return <ul key={key}>{await children()}</ul>;
     case "orderedList": return <ol key={key} start={a.start && a.start !== 1 ? a.start : undefined}>{await children()}</ol>;
     case "listItem": return <li key={key}>{await children()}</li>;
-    case "taskList": return <ul key={key} className="task-list">{await children()}</ul>;
-    case "taskItem": return <li key={key} className="task-item"><input type="checkbox" checked={!!a.checked} readOnly /> {await children()}</li>;
+    case "taskList": return <ul key={key} className="ecx-task-list task-list">{await children()}</ul>;
+    case "taskItem": return <li key={key} className="ecx-task-item task-item"><input type="checkbox" checked={!!a.checked} readOnly /> {await children()}</li>;
     case "blockquote": return <blockquote key={key}>{await children()}</blockquote>;
     case "codeBlock": return <pre key={key}><code className={a.language ? `language-${a.language}` : undefined}>{plainText(node)}</code></pre>;
     case "hardBreak": return <br key={key} />;
@@ -120,46 +120,51 @@ async function renderNode(node: Node, key: string, ctx: RenderContext): Promise<
       const img = <img src={safeUrl(a.src, "")} srcSet={a.srcset || undefined} sizes={a.srcset ? sizes : undefined}
         alt={a.alt ?? ""} title={a.title ?? undefined} width={a.width ?? undefined} height={a.height ?? undefined} loading="lazy" decoding="async" />;
       const pic = a.webpSrcset ? <picture><source type="image/webp" srcSet={a.webpSrcset} sizes={sizes} />{img}</picture> : img;
-      const cls = cx("cms-image", a.align && `align${a.align}`, a.mediaId && `cms-image-${a.mediaId}`);
+      const cls = cx("ecx-image cms-image", a.align && `ecx-align-${a.align} align${a.align}`, a.mediaId && `ecx-image-${a.mediaId} cms-image-${a.mediaId}`);
       return a.caption || a.align ? <figure key={key} className={cls}>{pic}{a.caption && <figcaption>{a.caption}</figcaption>}</figure> : <Fragment key={key}>{pic}</Fragment>;
     }
     case "gallery": {
       const items = (a.images ?? []) as Array<{ src: string; srcset?: string; webpSrcset?: string; alt?: string; caption?: string; width?: number; height?: number; full?: string }>;
       const cols = Math.min(6, Math.max(1, Number(a.columns) || 3));
       return (
-        <figure key={key} className={cx("cms-gallery", `columns-${cols}`)} style={{ display: "grid", gap: 8, gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+        <figure key={key} className={cx("ecx-gallery cms-gallery", `ecx-gallery-columns-${cols} columns-${cols}`)} style={{ display: "grid", gap: 8, gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
           {items.map((im, i) => {
             const el = <img src={safeUrl(im.src, "")} srcSet={im.srcset || undefined} sizes={`(max-width: 768px) 50vw, ${Math.round(100 / cols)}vw`} alt={im.alt ?? ""} width={im.width} height={im.height} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover", aspectRatio: "1" }} />;
             const pic = im.webpSrcset ? <picture><source type="image/webp" srcSet={im.webpSrcset} sizes={`(max-width: 768px) 50vw, ${Math.round(100 / cols)}vw`} />{el}</picture> : el;
-            return <figure key={i} className="cms-gallery-item" style={{ margin: 0 }}>{im.full ? <a href={safeUrl(im.full)}>{pic}</a> : pic}{im.caption && <figcaption>{im.caption}</figcaption>}</figure>;
+            return <figure key={i} className="ecx-gallery-item cms-gallery-item" style={{ margin: 0 }}>{im.full ? <a href={safeUrl(im.full)}>{pic}</a> : pic}{im.caption && <figcaption>{im.caption}</figcaption>}</figure>;
           })}
-          {a.caption && <figcaption className="cms-gallery-caption" style={{ gridColumn: "1 / -1" }}>{a.caption}</figcaption>}
+          {a.caption && <figcaption className="ecx-gallery-caption cms-gallery-caption" style={{ gridColumn: "1 / -1" }}>{a.caption}</figcaption>}
         </figure>
       );
     }
     case "video":
-      return <figure key={key} className="cms-video"><video src={safeUrl(a.src, "")} poster={a.poster ? safeUrl(a.poster, "") : undefined} controls preload="metadata" playsInline style={{ width: "100%", height: "auto" }} />{a.caption && <figcaption>{a.caption}</figcaption>}</figure>;
+      return <figure key={key} className="ecx-video cms-video"><video src={safeUrl(a.src, "")} poster={a.poster ? safeUrl(a.poster, "") : undefined} controls preload="metadata" playsInline style={{ width: "100%", height: "auto" }} />{a.caption && <figcaption>{a.caption}</figcaption>}</figure>;
     case "audio":
-      return <figure key={key} className="cms-audio"><audio src={safeUrl(a.src, "")} controls preload="metadata" style={{ width: "100%" }} />{a.caption && <figcaption>{a.caption}</figcaption>}</figure>;
+      return <figure key={key} className="ecx-audio cms-audio"><audio src={safeUrl(a.src, "")} controls preload="metadata" style={{ width: "100%" }} />{a.caption && <figcaption>{a.caption}</figcaption>}</figure>;
     case "file": {
       const isPdf = String(a.mime ?? "").includes("pdf") || /\.pdf($|\?)/i.test(String(a.src ?? ""));
       return (
-        <div key={key} className="cms-file">
+        <div key={key} className="ecx-file cms-file">
           {isPdf && a.embed !== false && <object data={safeUrl(a.src, "")} type="application/pdf" style={{ width: "100%", height: 600 }} aria-label={a.name}><a href={safeUrl(a.src)}>{a.name}</a></object>}
-          <a className="cms-file-link" href={safeUrl(a.src)} download={a.download ? "" : undefined} target="_blank" rel="noopener">{a.name || ctx.labels?.download || "Download"}</a>
+          <a className="ecx-file-link cms-file-link" href={safeUrl(a.src)} download={a.download ? "" : undefined} target="_blank" rel="noopener">{a.name || ctx.labels?.download || "Download"}</a>
         </div>
       );
     }
-    case "table": return <div key={key} className="table-wrap"><table><tbody>{await children()}</tbody></table></div>;
+    case "table": {
+      // Hàng đầu toàn ô tiêu đề → <thead>
+      const rows = await children();
+      const head = node.content?.[0]?.content?.length && node.content[0].content.every((c) => c.type === "tableHeader");
+      return <div key={key} className="ecx-table table-wrap"><table>{head && <thead>{rows[0]}</thead>}<tbody>{head ? rows.slice(1) : rows}</tbody></table></div>;
+    }
     case "tableRow": return <tr key={key}>{await children()}</tr>;
     case "tableHeader": return <th key={key} colSpan={a.colspan > 1 ? a.colspan : undefined} rowSpan={a.rowspan > 1 ? a.rowspan : undefined}>{await children()}</th>;
     case "tableCell": return <td key={key} colSpan={a.colspan > 1 ? a.colspan : undefined} rowSpan={a.rowspan > 1 ? a.rowspan : undefined}>{await children()}</td>;
     case "youtube": {
       const m = String(a.src ?? "").match(/(?:v=|youtu\.be\/|embed\/)([\w-]{11})/);
       const start = Number(a.start) > 0 ? `?start=${Math.floor(Number(a.start))}` : "";
-      return m ? <div key={key} className="embed"><iframe src={`https://www.youtube-nocookie.com/embed/${m[1]}${start}`} allowFullScreen loading="lazy" title="YouTube" /></div> : null;
+      return m ? <div key={key} className="ecx-youtube embed"><iframe src={`https://www.youtube-nocookie.com/embed/${m[1]}${start}`} allowFullScreen loading="lazy" title="YouTube" /></div> : null;
     }
-    // Bố cục (@cms/content 1.2). Cấu trúc dùng style trực tiếp → mọi theme hiển thị đúng; class để theme tạo kiểu thêm.
+    // Bố cục (@cms/content 1.2). Cấu trúc dùng style trực tiếp → mọi theme hiển thị đúng; class `ecx-*` để theme tạo kiểu thêm (`cms-*` giữ tới 2.0).
     case "columns": {
       // Cột co giãn theo tỉ lệ độ rộng; màn hẹp (mỗi cột < 14rem) tự xuống dòng thành một cột — không cần CSS của theme
       const stack = a.stack !== false;
@@ -167,22 +172,22 @@ async function renderNode(node: Node, key: string, ctx: RenderContext): Promise<
       const cols = await Promise.all((node.content ?? []).map(async (c, i) => {
         const w = Number(c.attrs?.width) > 0 ? Number(c.attrs?.width) : 1;
         const inner = await Promise.all((c.content ?? []).map((cc, j) => renderNode(cc, `${key}-${i}-${j}`, ctx)));
-        return <div key={`${key}-${i}`} className="cms-column" style={{ flex: `${w} 1 0`, minWidth: stack ? "min(100%, 14rem)" : 0 }}>{inner}</div>;
+        return <div key={`${key}-${i}`} className="ecx-column cms-column" style={{ flex: `${w} 1 0`, minWidth: stack ? "min(100%, 14rem)" : 0 }}>{inner}</div>;
       }));
-      return <div key={key} className={cx("cms-columns", a.verticalAlign && `cms-columns-${a.verticalAlign}`)} style={{ display: "flex", flexWrap: stack ? "wrap" : "nowrap", gap: "1.5rem", alignItems: align }}>{cols}</div>;
+      return <div key={key} className={cx("ecx-columns cms-columns", a.verticalAlign && `ecx-columns-${a.verticalAlign} cms-columns-${a.verticalAlign}`)} style={{ display: "flex", flexWrap: stack ? "wrap" : "nowrap", gap: "1.5rem", alignItems: align }}>{cols}</div>;
     }
-    case "column": return <div key={key} className="cms-column">{await children()}</div>;
+    case "column": return <div key={key} className="ecx-column cms-column">{await children()}</div>;
     case "group": {
       const bg = safeColor(a.background), fg = safeColor(a.textColor);
       const pad = PADDING[a.padding as string] ?? (bg ? PADDING.medium : undefined);
-      return <div key={key} className={cx("cms-group", a.padding && `cms-group-${a.padding}`)} style={{ background: bg, color: fg, padding: pad, borderRadius: bg ? 12 : undefined }}>{await children()}</div>;
+      return <div key={key} className={cx("ecx-group cms-group", a.padding && `ecx-group-${a.padding} cms-group-${a.padding}`)} style={{ background: bg, color: fg, padding: pad, borderRadius: bg ? 12 : undefined }}>{await children()}</div>;
     }
     case "callout": {
       const tone = TONES[a.tone as string] ? (a.tone as string) : "info";
       return (
-        <div key={key} role="note" className={cx("cms-callout", `cms-callout-${tone}`)}
+        <div key={key} role="note" className={cx("ecx-callout cms-callout", `ecx-callout-${tone} cms-callout-${tone}`)}
           style={{ borderLeft: `4px solid ${TONES[tone]}`, background: `color-mix(in srgb, ${TONES[tone]} 8%, transparent)`, padding: "0.75rem 1rem", borderRadius: 8 }}>
-          {a.title && <p className="cms-callout-title" style={{ margin: 0, fontWeight: 600 }}>{a.title}</p>}
+          {a.title && <p className="ecx-callout-title cms-callout-title" style={{ margin: 0, fontWeight: 600 }}>{a.title}</p>}
           {await children()}
         </div>
       );
@@ -194,13 +199,13 @@ async function renderNode(node: Node, key: string, ctx: RenderContext): Promise<
       const rel = new Set(String(a.rel ?? "").toLowerCase().split(/\s+/).filter((x) => /^[a-z-]+$/.test(x)));
       if (target) { rel.add("noopener"); rel.add("noreferrer"); }
       const look: CSSProperties = variant === "outline"
-        ? { border: "1px solid var(--cms-button-bg, var(--primary, currentColor))", color: "var(--cms-button-bg, var(--primary, inherit))" }
+        ? { border: "1px solid var(--ecx-button-bg, var(--cms-button-bg, var(--primary, currentColor)))", color: "var(--ecx-button-bg, var(--cms-button-bg, var(--primary, inherit)))" }
         : variant === "secondary"
-          ? { background: "var(--cms-button-secondary-bg, rgba(127,127,127,.15))", color: "inherit" }
-          : { background: "var(--cms-button-bg, var(--primary, #18181b))", color: "var(--cms-button-fg, #fff)" };
+          ? { background: "var(--ecx-button-secondary-bg, var(--cms-button-secondary-bg, rgba(127,127,127,.15)))", color: "inherit" }
+          : { background: "var(--ecx-button-bg, var(--cms-button-bg, var(--primary, #18181b)))", color: "var(--ecx-button-fg, var(--cms-button-fg, #fff))" };
       return (
-        <p key={key} className={cx("cms-buttons", a.align && `cms-buttons-${a.align}`)} style={a.align ? { textAlign: a.align } : undefined}>
-          <a className={cx("cms-button", `cms-button-${variant}`)} href={safeUrl(a.href)} target={target} rel={rel.size ? [...rel].join(" ") : undefined}
+        <p key={key} className={cx("ecx-buttons cms-buttons", a.align && `ecx-buttons-${a.align} cms-buttons-${a.align}`)} style={a.align ? { textAlign: a.align } : undefined}>
+          <a className={cx("ecx-button cms-button", `ecx-button-${variant} cms-button-${variant}`)} href={safeUrl(a.href)} target={target} rel={rel.size ? [...rel].join(" ") : undefined}
             style={{ display: "inline-block", padding: "0.6em 1.2em", borderRadius: 8, textDecoration: "none", fontWeight: 600, lineHeight: 1.2, ...look }}>{a.text}</a>
         </p>
       );
@@ -208,10 +213,10 @@ async function renderNode(node: Node, key: string, ctx: RenderContext): Promise<
     case "embed": {
       // Khung nhúng chỉ cho nhà cung cấp đã biết; địa chỉ khung do embedInfo dựng → không nhúng được trang tuỳ ý
       const info = embedInfo(a.url);
-      if (!info) return a.url ? <p key={key} className="cms-embed-link"><a href={safeUrl(a.url)} target="_blank" rel="noopener noreferrer">{a.caption || a.url}</a></p> : null;
+      if (!info) return a.url ? <p key={key} className="ecx-embed-link cms-embed-link"><a href={safeUrl(a.url)} target="_blank" rel="noopener noreferrer">{a.caption || a.url}</a></p> : null;
       const box: CSSProperties = info.aspect ? { position: "relative", aspectRatio: String(info.aspect) } : { position: "relative", height: info.height };
       return (
-        <figure key={key} className={cx("cms-embed", `cms-embed-${info.provider}`)} style={{ maxWidth: info.maxWidth, marginLeft: info.maxWidth ? "auto" : undefined, marginRight: info.maxWidth ? "auto" : undefined }}>
+        <figure key={key} className={cx("ecx-embed cms-embed", `ecx-embed-${info.provider} cms-embed-${info.provider}`)} style={{ maxWidth: info.maxWidth, marginLeft: info.maxWidth ? "auto" : undefined, marginRight: info.maxWidth ? "auto" : undefined }}>
           <div style={box}>
             <iframe src={info.src} title={a.caption || info.title} loading="lazy" allowFullScreen referrerPolicy="strict-origin-when-cross-origin"
               allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: 0, borderRadius: 8 }} />

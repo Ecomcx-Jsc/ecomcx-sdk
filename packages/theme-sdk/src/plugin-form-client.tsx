@@ -38,15 +38,15 @@ export function PluginFormClient({ plugin, table, fields, labels, successMessage
     } catch { setState({ status: "error", message: labels.error }); }
   }
 
-  if (state.status === "done") return <p className="form-success" role="status">{state.message}</p>;
+  if (state.status === "done") return <p className="ecx-form-success form-success" role="status">{state.message}</p>;
   return (
-    <form className={["cms-form", className].filter(Boolean).join(" ")} onSubmit={submit} noValidate>
+    <form className={["ecx-form cms-form", className].filter(Boolean).join(" ")} onSubmit={submit} noValidate>
       {fields.map((f) => {
         const id = `cms-form-${plugin}-${table}-${f.key}`;
         const err = errors[f.key];
         const common = { id, name: f.key, required: f.required, "aria-invalid": err ? true : undefined, defaultValue: f.default == null ? undefined : String(f.default) };
         return (
-          <p key={f.key} className={`cms-form-field cms-form-${f.type}`}>
+          <p key={f.key} className={`ecx-form-field ecx-form-${f.type} cms-form-field cms-form-${f.type}`}>
             {f.type === "boolean"
               ? <label htmlFor={id}><input type="checkbox" id={id} name={f.key} defaultChecked={f.default === true} /> {f.label}</label>
               : <label htmlFor={id}>{f.label}{f.required && <span aria-hidden="true"> *</span>}</label>}
@@ -59,11 +59,11 @@ export function PluginFormClient({ plugin, table, fields, labels, successMessage
               : f.type !== "boolean" && <input {...common}
                   type={({ email: "email", tel: "tel", url: "url", number: "number", date: "date", time: "time", datetime: "datetime-local" } as Record<string, string>)[f.type] ?? "text"}
                   maxLength={f.maxLength ?? undefined} minLength={f.minLength ?? undefined} min={f.min ?? undefined} max={f.max ?? undefined} pattern={f.pattern ?? undefined} />}
-            {err && <span className="form-error">{err.join(" ")}</span>}
+            {err && <span className="ecx-form-error form-error">{err.join(" ")}</span>}
           </p>
         );
       })}
-      {state.status === "error" && <p className="form-error" role="alert">{state.message}</p>}
+      {state.status === "error" && <p className="ecx-form-error form-error" role="alert">{state.message}</p>}
       <button type="submit" disabled={state.status === "sending"}>{state.status === "sending" ? labels.sending : labels.submit}</button>
     </form>
   );

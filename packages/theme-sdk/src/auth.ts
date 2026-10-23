@@ -18,7 +18,7 @@ export const getAccessToken = cache(async (): Promise<string | undefined> => {
 });
 
 /**
- * Người đang đăng nhập trên website, null nếu là khách — tương đương wp_get_current_user() / is_user_logged_in().
+ * Người đang đăng nhập trên website, null nếu là khách.
  * Dùng trong Server Component, route, generateMetadata. Component client: dùng useCurrentUser() hoặc nhận qua props.
  */
 export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {

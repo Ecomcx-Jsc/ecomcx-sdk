@@ -27,7 +27,7 @@ const pluginApi = createFetchKit({
 /**
  * Gọi endpoint public của plugin khi render trên server: pluginFetch("ecomcx-seo", "/sitemap/news").
  * Cache theo tag "cms" (+ tags) như dữ liệu khác của CMS; noStore để luôn lấy mới.
- * asUser: gửi kèm phiên của người đang xem (endpoint nhận ICurrentUser) — luôn không cache: pluginFetch("woo", "/cart", { asUser: true }).
+ * asUser: gửi kèm phiên của người đang xem (endpoint nhận ICurrentUser) — luôn không cache: pluginFetch("shop", "/cart", { asUser: true }).
  */
 export async function pluginFetch<T>(slug: string, path: string, opts: FetchOptions = {}): Promise<T> {
   if (!/^[a-z0-9][a-z0-9-]{1,63}$/.test(slug) || !path.startsWith("/") || path.includes("..")) throw new CmsApiError(400, "Đường dẫn plugin không hợp lệ");

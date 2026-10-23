@@ -215,7 +215,7 @@ export interface FilterMap {
   "robots.txt": (content: string, ctx: { site: Site }) => string | Promise<string>;
   /** Sửa danh sách URL của sitemap.xml. */
   "sitemap.entries": (entries: SitemapEntry[], ctx: { site: Site }) => SitemapEntry[] | Promise<SitemapEntry[]>;
-  /** Thêm/bớt class của thẻ <body> (vd "logged-in", "has-promo-bar") — như body_class của WordPress. */
+  /** Thêm/bớt class của thẻ <body> (vd "logged-in", "has-promo-bar") */
   "body.class": (classes: string[], ctx: { site: Site }) => string[] | Promise<string[]>;
   /** Cho phép các filter tùy biến bất kỳ của plugin/theme */
   [customFilter: string]: ((val: any, ctx?: any) => any) | undefined;
@@ -228,9 +228,9 @@ export interface PluginDefinition {
   widgets?: Record<string, ComponentType<WidgetProps>>;
   /** Chèn component vào vị trí cố định của trang (hỗ trợ tên tự do, ưu tiên priority). */
   slots?: Record<string, SlotRegistration<any>>;
-  /** Biến đổi dữ liệu theo chuỗi filter kiểu WordPress (applyFilters). */
+  /** Biến đổi dữ liệu qua chuỗi filter (applyFilters). */
   filters?: { [K in keyof FilterMap]?: FilterMap[K] };
-  /** Lắng nghe action phát ra từ theme/plugin kiểu WordPress (doAction). */
+  /** Lắng nghe action phát ra từ theme/plugin (doAction). */
   actions?: Record<string, ((...args: any[]) => void | Promise<void>) | Array<{ handler: (...args: any[]) => void | Promise<void>; priority?: number }>>;
   /** Renderer khối của plugin (theo tên khối) — khối cấp cao nhất và khối trong nội dung soạn thảo (defineBlock). */
   blocks?: Record<string, ComponentType<BlockProps>>;
@@ -239,14 +239,14 @@ export interface PluginDefinition {
   /** File ở gốc website: { "/news-sitemap.xml": handler }. Đường dẫn phải khai báo trong plugin.json → frontend.routes. */
   routes?: Record<string, PluginRoute>;
   /**
-   * Hàm công bố cho theme và plugin khác dùng (chạy phía server) — tương đương hàm toàn cục kiểu woo_get_cart() của WordPress:
+   * Hàm công bố cho theme và plugin khác dùng (chạy phía server):
    *   definePlugin({ exports: { getCart, formatPrice } })
-   *   const woo = await getPlugin<WooApi>("woo"); await woo?.getCart();
+   *   const shop = await getPlugin<ShopApi>("shop"); await shop?.getCart();
    */
   exports?: Record<string, unknown>;
   /**
-   * Template của plugin (trang sản phẩm, giỏ hàng, tài khoản…). Theme có template cùng tên thì dùng của theme —
-   * như thư mục woocommerce/ trong theme WordPress. Ưu tiên theo danh sách template của trang: tên cụ thể hơn thắng.
+   * Template của plugin (trang sản phẩm, giỏ hàng, tài khoản…). Theme có template cùng tên thì dùng của theme.
+   * Ưu tiên theo danh sách template của trang: tên cụ thể hơn thắng.
    */
   templates?: Record<string, ComponentType<TemplateProps>>;
 }

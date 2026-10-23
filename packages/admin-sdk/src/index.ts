@@ -43,7 +43,7 @@ type CmsAdminTiptap = import("./types").CmsAdmin["editor"]["tiptap"];
 export const currentUser = () => host().currentUser();
 /**
  * Công bố hàm cho plugin khác dùng trong admin (gọi ở đầu bundle):  exposeApi({ openCartDrawer, formatPrice })
- * Bên dùng:  const woo = await waitForPluginApi<WooAdminApi>("woo");  woo?.formatPrice(1000)
+ * Bên dùng:  const shop = await waitForPluginApi<ShopAdminApi>("shop");  shop?.formatPrice(1000)
  */
 export const exposeApi = (api: Record<string, unknown>) => host().plugins?.expose("", api);
 /** Hàm plugin khác đã công bố (undefined nếu plugin chưa bật hoặc bundle chưa nạp xong). */
@@ -53,7 +53,7 @@ export const waitForPluginApi = <T = Record<string, unknown>>(slug: string, time
   host().plugins ? host().plugins!.wait<T>(slug, timeoutMs) : Promise.resolve(undefined);
 /**
  * Dịch chuỗi giao diện theo khoá (ICU MessageFormat). Bản dịch của plugin đặt trong gói: locales/vi.json, locales/en.json
- * — CMS tự nạp với namespace = slug plugin (như text domain của WordPress):
+ * — CMS tự nạp với namespace = slug plugin:
  *   locales/en.json: { "form.title": "Contact", "form.count": "{count, plural, one {# message} other {# messages}}" }
  *   const t = createT("lien-he");  t("form.title") → "Contact";  t("form.count", { count: 3 }) → "3 messages"
  * Khoá có ":" là khoá đầy đủ ("core:common.save" — nhãn chung của lõi, "plugin-khac:x").
