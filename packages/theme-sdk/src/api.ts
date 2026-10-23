@@ -141,9 +141,23 @@ export const getPost = async (type: string, slug: string, locale?: string) =>
   cmsFetch<Post>(`/posts/${type}/${encodeURIComponent(slug)}`, { tags: ["posts"], query: clean({ locale: await loc(locale) }) }).catch(() => null);
 export const getTerms = async (taxonomy: string, hideEmpty = true, locale?: string) =>
   cmsFetch<Term[]>(`/terms/${taxonomy}`, { tags: ["terms"], query: clean({ hideEmpty, locale: await loc(locale) }) });
-/** Template / phần dựng bằng khối của theme đang dùng (bản sửa trong Trình dựng thắng bản của theme). */
-export const getTemplates = () =>
-  cmsFetch<{ theme: string; templates: Record<string, PostContentDoc>; parts: Record<string, PostContentDoc> }>("/templates", { tags: ["templates"] });
+/** Cookie giữ token bản nháp của Trình dựng (website đang ở chế độ xem trước). */
+export const TEMPLATE_DRAFT_COOKIE = "cms-template-draft";
+
+async function templateDraft(): Promise<string | null> {
+  try {
+    const { cookies, draftMode } = await import("next/headers");
+    if (!(await draftMode()).isEnabled) return null;
+    return (await cookies()).get(TEMPLATE_DRAFT_COOKIE)?.value ?? null;
+  } catch { return null; }
+}
+
+/** Template / phần dựng bằng khối của theme đang dùng (bản sửa trong Trình dựng thắng bản của theme; đang xem trước → bản nháp). */
+export const getTemplates = async () => {
+  const draft = await templateDraft();
+  return cmsFetch<{ theme: string; templates: Record<string, PostContentDoc>; parts: Record<string, PostContentDoc> }>("/templates",
+    draft ? { noStore: true, query: { draft } } : { tags: ["templates"] });
+};
 
 export const getMenu = async (location: string, locale?: string) =>
   cmsFetch<Menu | null>(`/menus/${location}`, { tags: ["menus"], query: clean({ locale: await loc(locale) }) });
