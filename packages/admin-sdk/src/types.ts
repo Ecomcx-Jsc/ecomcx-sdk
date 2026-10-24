@@ -91,6 +91,8 @@ export interface AdminPage {
   /** Khớp với Path khai báo trong IAdminRegistry.AddMenu ở backend, vd "/redirects". */
   path: string;
   title?: string;
+  /** Toàn màn hình: không thanh bên, không khung trang của admin (vd trình dựng trang kéo thả). Plugin tự vẽ nút quay lại. */
+  fullscreen?: boolean;
   component: ComponentType<{ path: string }>;
 }
 

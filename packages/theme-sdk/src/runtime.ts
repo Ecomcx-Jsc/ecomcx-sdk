@@ -1,7 +1,7 @@
 import { cache } from "react";
 import type { ComponentType } from "react";
 import { getSite, getTemplates } from "./api";
-import type { FilterMap, LayoutProps, PluginDefinition, PluginLoader, ShortcodeProps, Site, TemplateProps, ThemeEntry } from "./types";
+import type { FilterMap, LayoutProps, PluginDefinition, PluginLoader, RegionProps, ShortcodeProps, Site, TemplateProps, ThemeEntry } from "./types";
 
 interface RuntimeConfig {
   themes: Record<string, ThemeEntry>;
@@ -152,6 +152,18 @@ export async function findRoute(path: string, site?: Site) {
 export async function findBlock(type: string, site?: Site) {
   for (const d of await getActiveExtensions(site)) if (d.blocks?.[type]) return d.blocks[type];
   return null;
+}
+
+/** Component thay vùng (definePlugin → regions): priority nhỏ nhất thắng, bằng nhau thì plugin trước theme. */
+export async function findRegion(name: string, site?: Site): Promise<ComponentType<RegionProps> | null> {
+  let best: { Component: ComponentType<RegionProps>; priority: number } | null = null;
+  for (const d of await getActiveExtensions(site)) {
+    const raw = d.regions?.[name];
+    if (!raw) continue;
+    const item = typeof raw === "function" ? { Component: raw, priority: 10 } : { Component: raw.component, priority: raw.priority ?? 10 };
+    if (item.Component && (!best || item.priority < best.priority)) best = item;
+  }
+  return best?.Component ?? null;
 }
 
 export interface LoadedSlotItem {

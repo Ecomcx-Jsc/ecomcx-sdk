@@ -45,6 +45,14 @@ export function validate(dir) {
     for (const name of Object.keys(manifest.regions ?? {}))
       if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(name)) errors.push(`regions: tên vùng "${name}" không hợp lệ (chữ thường, số, dấu gạch ngang)`);
     if (manifest.regions && manifest.editing !== "hybrid") warnings.push('regions chỉ được dùng khi theme.json có "editing": "hybrid"');
+    // Vùng chuẩn của core: header/footer bọc trong EditableRegion thì plugin thay được với mọi theme
+    const layoutFile = ["layout.tsx", "layout.ts"].map((f) => path.join(dir, f)).find((f) => fs.existsSync(f));
+    if (layoutFile && manifest.editing !== "blocks") {
+      const src = fs.readFileSync(layoutFile, "utf8");
+      for (const name of ["header", "footer"])
+        if (!new RegExp(`<EditableRegion[^>]*name=["']${name}["']`).test(src))
+          warnings.push(`${path.basename(layoutFile)}: nên bọc ${name} trong <EditableRegion name="${name}" data={data}> để plugin thay được ${name}`);
+    }
     for (const folder of ["templates", "parts"]) {
       const d = path.join(dir, folder);
       if (!fs.existsSync(d)) continue;

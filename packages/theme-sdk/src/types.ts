@@ -119,7 +119,11 @@ export interface TemplateProps {
   template: string;
 }
 
-export interface LayoutProps { site: Site; settings: JsonObject; children: ReactNode }
+export interface LayoutProps {
+  site: Site; settings: JsonObject; children: ReactNode;
+  /** Trang đang xem — truyền cho <EditableRegion data={data}> để vùng (và plugin thay vùng) biết trang nào. */
+  data?: ResolveResult;
+}
 
 export interface ThemeManifest {
   name: string; slug: string; version: string; author?: string; description?: string; parent?: string | null;
@@ -209,6 +213,14 @@ export type CoreSlotName = "head" | "body.start" | "body.end" | "before.content"
   | "comments.before" | "comments.after" | "comment_form.fields" | "auth.login.fields" | "auth.register.fields" | "auth.forgot_password.fields";
 export type SlotName = CoreSlotName | (string & {});
 
+/**
+ * Vùng chuẩn của core: theme bọc đầu trang / chân trang trong <EditableRegion name="header|footer">
+ * (theme khối: khối templatePart cùng slug) → plugin thay được bằng definePlugin({ regions }) với mọi theme.
+ */
+export type RegionName = "header" | "footer" | (string & {});
+/** Component thay vùng của plugin. `children` = bản vùng sẽ vẽ nếu không có plugin (Trình dựng / theme) — trả lại `children` để giữ nguyên. */
+export interface RegionProps { name: string; site: Site; data?: ResolveResult | null; children?: ReactNode }
+
 /** Một handler gắn vào Slot, kèm priority (mặc định 10, số nhỏ chạy trước). */
 export interface SlotHandler<P = any> {
   component: ComponentType<P>;
@@ -240,6 +252,11 @@ export interface PluginDefinition {
   widgets?: Record<string, ComponentType<WidgetProps>>;
   /** Chèn component vào vị trí cố định của trang (hỗ trợ tên tự do, ưu tiên priority). */
   slots?: Record<string, SlotRegistration<any>>;
+  /**
+   * Thay cả một vùng của theme (header, footer hoặc vùng theme khai báo): { header: MyHeader }.
+   * Nhiều plugin cùng thay một vùng → priority nhỏ nhất thắng (mặc định 10; bằng nhau thì plugin trước theme).
+   */
+  regions?: Record<string, ComponentType<RegionProps> | SlotHandler<RegionProps>>;
   /** Biến đổi dữ liệu qua chuỗi filter (applyFilters). */
   filters?: { [K in keyof FilterMap]?: FilterMap[K] };
   /** Lắng nghe action phát ra từ theme/plugin (doAction). */

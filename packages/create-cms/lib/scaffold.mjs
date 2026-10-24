@@ -50,18 +50,22 @@ export function scaffoldTheme(name, { parent, dir, blocks = false } = {}) {
     write(path.join(root, "layout.tsx"), `
 import "./styles.css";
 import type { CSSProperties } from "react";
-import { Menu, setting, type LayoutProps } from "@cms/theme-sdk";
+import { EditableRegion, Menu, setting, type LayoutProps } from "@cms/theme-sdk";
 
-/** Khung chung của mọi trang (header, footer). */
-export default function Layout({ site, settings, children }: LayoutProps) {
+/** Khung chung của mọi trang. Header, footer bọc trong EditableRegion để plugin thay được (vùng chuẩn của core). */
+export default function Layout({ site, settings, data, children }: LayoutProps) {
   return (
     <div className="site" style={{ "--primary": setting(settings, "primaryColor", "#0ea5e9") } as CSSProperties}>
-      <header className="site-header">
-        <a href="/" className="site-title">{site.title}</a>
-        <Menu location="primary" className="primary-nav" />
-      </header>
+      <EditableRegion name="header" data={data}>
+        <header className="site-header">
+          <a href="/" className="site-title">{site.title}</a>
+          <Menu location="primary" className="primary-nav" />
+        </header>
+      </EditableRegion>
       <main className="site-main">{children}</main>
-      <footer className="site-footer">{setting(settings, "footerText", "") || \`© \${new Date().getFullYear()} \${site.title}\`}</footer>
+      <EditableRegion name="footer" data={data}>
+        <footer className="site-footer">{setting(settings, "footerText", "") || \`© \${new Date().getFullYear()} \${site.title}\`}</footer>
+      </EditableRegion>
     </div>
   );
 }

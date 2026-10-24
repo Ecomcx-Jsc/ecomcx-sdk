@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from "react";
+import { Fragment, type CSSProperties, type ReactNode } from "react";
 import { getPosts } from "./api";
 import { Link } from "./client";
 import { Comments, FeaturedImage, LanguageSwitcher, Menu, Pagination, PostDate, SearchForm, TermLinks } from "./components";
@@ -114,9 +114,10 @@ export async function renderDynamic(node: RenderNode, key: string, ctx: RenderCo
     case "templatePart": {
       if (!a.slug || !ctx.parts || (ctx.partDepth ?? 0) >= 4) return null;
       const doc = await ctx.parts(String(a.slug));
-      if (!doc) return null;
       const Tag = (["header", "footer", "aside", "section"].includes(a.tagName) ? a.tagName : "div") as "div";
-      return <Tag key={key} className={cx("ecx-template-part", `ecx-template-part-${a.slug}`)}>{await renderContent(doc, { ...ctx, partDepth: (ctx.partDepth ?? 0) + 1 })}</Tag>;
+      const part = doc ? <Tag className={cx("ecx-template-part", `ecx-template-part-${a.slug}`)}>{await renderContent(doc, { ...ctx, partDepth: (ctx.partDepth ?? 0) + 1 })}</Tag> : null;
+      const el = ctx.region ? await ctx.region(String(a.slug), part) : part;
+      return el == null ? null : <Fragment key={key}>{el}</Fragment>;
     }
   }
   return null;
