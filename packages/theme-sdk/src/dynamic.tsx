@@ -111,6 +111,12 @@ export async function renderDynamic(node: RenderNode, key: string, ctx: RenderCo
       return ctx.query?.data ? <Pagination key={key} data={ctx.query.data} /> : null;
     case "queryEmpty":
       return ctx.query && !ctx.query.posts.length ? <div key={key} className="ecx-query-empty">{await children(ctx)}</div> : null;
+    case "syncedPattern": {
+      if (typeof a.ref !== "number" || !ctx.pattern || (ctx.partDepth ?? 0) >= 4) return null;
+      const doc = await ctx.pattern(a.ref);
+      if (!doc) return null;
+      return <Fragment key={key}>{await renderContent(doc, { ...ctx, partDepth: (ctx.partDepth ?? 0) + 1 })}</Fragment>;
+    }
     case "templatePart": {
       if (!a.slug || !ctx.parts || (ctx.partDepth ?? 0) >= 4) return null;
       const doc = await ctx.parts(String(a.slug));

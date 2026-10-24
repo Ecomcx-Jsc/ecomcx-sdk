@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { ExtensionBoundary, PostPasswordForm } from "./client";
 import { applyFilters, findBlock, findRegion, findShortcode, getActiveExtensions } from "./runtime";
 import type { Post, PostContentDoc, ResolveResult, Site } from "./types";
-import { getSite, getTemplates } from "./api";
+import { getPattern, getSite, getTemplates } from "./api";
 import { getT } from "./i18n";
 import { renderDynamic } from "./dynamic";
 import { renderContent, type RenderContext } from "./rich";
@@ -57,5 +57,6 @@ export async function contentContext(site: Site, post?: Post | null, data?: Reso
     dynamic: renderDynamic,
     parts: async (slug) => (await getTemplates().catch(() => null))?.parts[slug] ?? null,
     region: (name, fallback) => regionOverride(name, fallback, site, data),
+    pattern: (ref) => getPattern(ref),
   };
 }

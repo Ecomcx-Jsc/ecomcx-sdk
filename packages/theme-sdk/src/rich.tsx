@@ -31,6 +31,8 @@ export interface RenderContext {
   /** Nội dung template part theo slug (khối templatePart). */
   parts?(slug: string): Promise<ContentDoc | null>;
   partDepth?: number;
+  /** Nội dung mẫu đồng bộ theo id (khối syncedPattern). */
+  pattern?(ref: number): Promise<ContentDoc | null>;
   /** Plugin thay vùng (definePlugin → regions): nhận bản template part đã vẽ, trả bản thay thế. Không có = giữ nguyên. */
   region?(name: string, fallback: ReactNode): Promise<ReactNode>;
   /** CSS kiểu dáng khối (attrs.style) gom theo class — renderContent ngoài cùng tạo và xuất thành một thẻ <style>. */

@@ -159,6 +159,10 @@ export const getTemplates = async () => {
     draft ? { noStore: true, query: { draft } } : { tags: ["templates"] });
 };
 
+/** Nội dung mẫu đồng bộ (khối syncedPattern). null = mẫu đã xoá / chưa xuất bản. */
+export const getPattern = (id: number) =>
+  cmsFetch<PostContentDoc | null>(`/patterns/${id}`, { tags: ["patterns", "posts"] }).catch(() => null);
+
 export const getMenu = async (location: string, locale?: string) =>
   cmsFetch<Menu | null>(`/menus/${location}`, { tags: ["menus"], query: clean({ locale: await loc(locale) }) });
 export const getMenuById = (id: number) => cmsFetch<Menu | null>(`/menus/id/${id}`, { tags: ["menus"] });
