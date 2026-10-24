@@ -1,6 +1,6 @@
 {
   "name": "@cms/theme-sdk",
-  "version": "1.22.0",
+  "version": "1.22.1",
   "description": "SDK để viết theme và phần frontend của plugin cho CMS",
   "type": "module",
   "main": "./src/index.ts",

@@ -92,7 +92,11 @@ export function validate(dir) {
     if (manifest.screenshot && !fs.existsSync(path.join(dir, manifest.screenshot))) warnings.push(`Không thấy ảnh ${manifest.screenshot}`);
     if (fs.existsSync(path.join(dir, "node_modules"))) warnings.push("node_modules sẽ bị loại khỏi gói");
   } else {
-    const declared = ["collections", "settings", "postTypes", "taxonomies", "postStatuses", "capabilities", "menus"].some((k) => manifest[k] && Object.keys(manifest[k]).length);
+    const declared = ["collections", "settings", "postTypes", "taxonomies", "postStatuses", "postMeta", "capabilities", "menus"].some((k) => manifest[k] && Object.keys(manifest[k]).length);
+    for (const key of Object.keys(manifest.postMeta ?? {}))
+      if (!/^[A-Za-z0-9_][A-Za-z0-9_.:-]{0,99}$/.test(key)) errors.push(`postMeta: khoá "${key}" không hợp lệ (chữ, số, _ - . :, tối đa 100 ký tự)`);
+    for (const name of Object.keys(manifest.pageTemplates ?? {}))
+      if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(name)) errors.push(`pageTemplates: tên template "${name}" không hợp lệ (chữ thường, số, gạch ngang)`);
     if (!manifest.backend && !manifest.admin && !manifest.frontend && !declared) errors.push("Plugin cần ít nhất một phần: backend, admin, frontend hoặc khai báo (collections, settings, postTypes…)");
     for (const [name, c] of Object.entries(manifest.collections ?? {})) {
       if (!/^[a-z][a-z0-9]*(_[a-z0-9]+)*$/.test(name)) errors.push(`collections: tên bảng không hợp lệ: ${name}`);
