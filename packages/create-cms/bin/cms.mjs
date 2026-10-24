@@ -25,7 +25,7 @@ const HELP = `${c.bold("create-cms")} — công cụ viết theme/plugin cho CMS
   ${c.cyan('plugin "Tên"')} [--admin] [--frontend] [--tests]   tạo plugin: plugin.json + một file C# (CMS tự biên dịch)
                                       --admin / --frontend: thêm giao diện React riêng · --project: dự án csproj · --no-backend
   ${c.cyan("validate")} [thư-mục]                  kiểm tra theme.json / plugin.json
-  ${c.cyan("upgrade")} [thư-mục]                   đưa project theme/plugin lên SDK mới nhất (@cms/theme-sdk, @cms/admin-sdk) rồi kiểm tra lại
+  ${c.cyan("upgrade")} [thư-mục]                   đưa project theme/plugin lên SDK mới nhất (@ecomcx/nexus-theme-sdk, @ecomcx/nexus-admin-sdk) rồi kiểm tra lại
   ${c.cyan("test")} [thư-mục]                      đóng gói + chạy test xUnit trong tests/ trên CMS thử (Cms.Plugin.Testing)
   ${c.cyan("check")} [thư-mục]                     chạy thử trên CMS: manifest, biên dịch, quét bảo mật (như khi cài / nộp Store)
   ${c.cyan("pack")} [thư-mục] [--out dist]         đóng gói → dist/<slug>-<version>.zip

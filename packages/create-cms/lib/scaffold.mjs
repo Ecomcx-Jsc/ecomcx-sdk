@@ -1,4 +1,4 @@
-import { CLI, alias } from "./npm.mjs";
+import { ADMIN_SDK, CLI, THEME_SDK, VERSION } from "./npm.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import { c, pascal, slugify, write, findCmsRepo } from "./util.mjs";
@@ -35,7 +35,7 @@ export function scaffoldTheme(name, { parent, dir, blocks = false } = {}) {
     description: "Thêm dependencies npm mà theme cần vào đây — Builder sẽ tự cài khi build.",
     dependencies: {},
     devDependencies: {
-      "@cms/theme-sdk": alias("@cms/theme-sdk"),
+      [THEME_SDK]: `^${VERSION}`,
       "@types/react": "^19",
       typescript: "5.9.3",
     },
@@ -51,7 +51,7 @@ export function scaffoldTheme(name, { parent, dir, blocks = false } = {}) {
     write(path.join(root, "layout.tsx"), `
 import "./styles.css";
 import type { CSSProperties } from "react";
-import { EditableRegion, Menu, setting, type LayoutProps } from "@cms/theme-sdk";
+import { EditableRegion, Menu, setting, type LayoutProps } from "@ecomcx/nexus-theme-sdk";
 
 /** Khung chung của mọi trang. Header, footer bọc trong EditableRegion để plugin thay được (vùng chuẩn của core). */
 export default function Layout({ site, settings, data, children }: LayoutProps) {
@@ -72,7 +72,7 @@ export default function Layout({ site, settings, data, children }: LayoutProps) 
 }
 `);
     write(path.join(root, "templates", "index.tsx"), `
-import { Pagination, PostContent, type TemplateProps } from "@cms/theme-sdk";
+import { Pagination, PostContent, type TemplateProps } from "@ecomcx/nexus-theme-sdk";
 
 /** Template dự phòng cuối cùng (giống index.php). */
 export default function Index({ data }: TemplateProps) {
@@ -99,7 +99,7 @@ export default function Index({ data }: TemplateProps) {
 }
 `);
     write(path.join(root, "templates", "single.tsx"), `
-import { Comments, FeaturedImage, PostContent, PostDate, type TemplateProps } from "@cms/theme-sdk";
+import { Comments, FeaturedImage, PostContent, PostDate, type TemplateProps } from "@ecomcx/nexus-theme-sdk";
 
 /** Một bài viết (giống single.php). Tạo single-{postType}.tsx để riêng cho từng post type. */
 export default function Single({ data, site }: TemplateProps) {
@@ -116,7 +116,7 @@ export default function Single({ data, site }: TemplateProps) {
 }
 `);
     write(path.join(root, "templates", "404.tsx"), `
-import { SearchForm, type TemplateProps } from "@cms/theme-sdk";
+import { SearchForm, type TemplateProps } from "@ecomcx/nexus-theme-sdk";
 
 export default function NotFound(_: TemplateProps) {
   return (
@@ -137,7 +137,7 @@ a { color: var(--primary); }
 `);
   } else {
     write(path.join(root, "templates", "home.tsx"), `
-import type { TemplateProps } from "@cms/theme-sdk";
+import type { TemplateProps } from "@ecomcx/nexus-theme-sdk";
 
 /** Child theme: chỉ ghi đè template cần thiết, phần còn lại lấy từ theme cha "${parent}". */
 export default function Home({ data }: TemplateProps) {
@@ -152,7 +152,7 @@ export default function Home({ data }: TemplateProps) {
   }
 
   write(path.join(root, "extend.tsx"), `
-import { definePlugin } from "@cms/theme-sdk";
+import { definePlugin } from "@ecomcx/nexus-theme-sdk";
 
 /**
  * Theme có thể đăng ký shortcode, widget, slot, filter.
@@ -178,7 +178,7 @@ function scaffoldBlockFiles(root) {
   write(path.join(root, "layout.tsx"), `
 import "./styles.css";
 import type { CSSProperties } from "react";
-import { setting, type LayoutProps } from "@cms/theme-sdk";
+import { setting, type LayoutProps } from "@ecomcx/nexus-theme-sdk";
 
 /** Khung trơn: header, footer và nội dung từng trang là khối (parts/, templates/), sửa trong Giao diện › Trình dựng. */
 export default function Layout({ settings, children }: LayoutProps) {
@@ -405,7 +405,7 @@ export function scaffoldPlugin(name, { backend = "source", admin = false, fronte
   if (admin) {
     write(path.join(root, "admin", "src", "index.tsx"), `
 import { useState } from "react";
-import { Button, Card, Field, Input, PageHeader, api, createT, notify, registerMetaBox, registerPage, useApi } from "@cms/admin-sdk";
+import { Button, Card, Field, Input, PageHeader, api, createT, notify, registerMetaBox, registerPage, useApi } from "@ecomcx/nexus-admin-sdk";
 
 /** Dịch theo khoá trong locales/*.json của plugin (namespace "${slug}"). */
 const t = createT("${slug}");
@@ -449,7 +449,7 @@ registerMetaBox({
 
   if (frontend) {
     write(path.join(root, "frontend", "index.tsx"), `
-import { definePlugin } from "@cms/theme-sdk";
+import { definePlugin } from "@ecomcx/nexus-theme-sdk";
 
 /** Phần hiển thị ngoài website: shortcode, widget, slot, filter. */
 export default definePlugin({
@@ -466,8 +466,8 @@ export default definePlugin({
 
   if (admin || frontend) {
     const devDeps = { "@types/react": "^19", typescript: "5.9.3" };
-    if (admin) devDeps["@cms/admin-sdk"] = alias("@cms/admin-sdk");
-    if (frontend) devDeps["@cms/theme-sdk"] = alias("@cms/theme-sdk");
+    if (admin) devDeps[ADMIN_SDK] = `^${VERSION}`;
+    if (frontend) devDeps[THEME_SDK] = `^${VERSION}`;
     write(path.join(root, "package.json"), JSON.stringify({
       name: `cms-plugin-${slug}`, private: true, version: "1.0.0",
       description: `Dependencies cho giao diện admin/frontend của plugin ${name}`,
@@ -483,8 +483,8 @@ export default definePlugin({
   const parts = [
     backend === "source" && `- \`${cls}.cs\` — logic C#: bảng dữ liệu (EF), hook, endpoint. CMS tự biên dịch khi cài (không cần .NET SDK)`,
     backend === "project" && "- `backend/` — dự án C# (csproj): build bằng `dotnet build`, CMS nạp DLL",
-    admin && "- `admin/src/` — trang quản trị tự viết (@cms/admin-sdk); settings + menu khai báo trong plugin.json",
-    frontend && "- `frontend/` — hiển thị ngoài website (@cms/theme-sdk): shortcode, widget, slot",
+    admin && "- `admin/src/` — trang quản trị tự viết (@ecomcx/nexus-admin-sdk); settings + menu khai báo trong plugin.json",
+    frontend && "- `frontend/` — hiển thị ngoài website (@ecomcx/nexus-theme-sdk): shortcode, widget, slot",
     (admin || backend === "project") && `- \`locales/\` — bản dịch theo khoá, namespace \`${slug}\``,
   ].filter(Boolean).join("\n");
   write(path.join(root, "README.md"), `# ${name}

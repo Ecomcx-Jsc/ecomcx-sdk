@@ -65,7 +65,7 @@ git push -u origin main
 
 ## 3. Phát hành SDK (GitHub Release)
 
-npm không cài được thư mục con của repo git, nên `@cms/admin-sdk` và `@cms/theme-sdk` được phát hành thành tarball (JavaScript đã biên dịch + `.d.ts`) đính kèm GitHub Release. Không cần tài khoản npm hay token khi cài.
+npm không cài được thư mục con của repo git, nên `@ecomcx/nexus-admin-sdk` và `@ecomcx/nexus-theme-sdk` được phát hành thành tarball (JavaScript đã biên dịch + `.d.ts`) đính kèm GitHub Release. Không cần tài khoản npm hay token khi cài.
 
 1. Tăng `version` trong `packages/*/package.json` (các gói cùng phiên bản).
 2. Thử trên máy: `npm run release` (build vào `dist-release/` và cài thử vào dự án trống).
@@ -74,8 +74,8 @@ npm không cài được thư mục con của repo git, nên `@cms/admin-sdk` v�
 Cài trong core/plugin:
 
 ```json
-"@cms/theme-sdk": "https://github.com/Ecomcx-Jsc/ecomcx-sdk/releases/download/vX.Y.Z/cms-theme-sdk-X.Y.Z.tgz",
-"@cms/admin-sdk": "https://github.com/Ecomcx-Jsc/ecomcx-sdk/releases/download/vX.Y.Z/cms-admin-sdk-X.Y.Z.tgz"
+"@ecomcx/nexus-theme-sdk": "https://github.com/Ecomcx-Jsc/ecomcx-sdk/releases/download/vX.Y.Z/cms-theme-sdk-X.Y.Z.tgz",
+"@ecomcx/nexus-admin-sdk": "https://github.com/Ecomcx-Jsc/ecomcx-sdk/releases/download/vX.Y.Z/cms-admin-sdk-X.Y.Z.tgz"
 ```
 
 CLI `create-cms` không cần tarball — chạy thẳng từ tag: `npx github:Ecomcx-Jsc/ecomcx-sdk#vX.Y.Z pack`. Core ghim tag trong `scripts/cms-cli.sh`.

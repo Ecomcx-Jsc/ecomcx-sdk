@@ -23,6 +23,7 @@ export function validate(dir) {
   if (!SEMVER.test(manifest.version ?? "")) errors.push("version phải theo semver, vd 1.0.0");
   const dicts = checkLocales(dir, errors, warnings);
   checkLabelKeys(manifest, dicts, kind, errors, warnings);
+  checkOldImports(dir, warnings);
   // Bản dịch kiểu cũ (khoá là chuỗi gốc): { "en": { "Chuỗi gốc": "Translation" } } — vẫn chạy, nên chuyển sang locales/*.json
   if (manifest.translations !== undefined) {
     warnings.push(kind === "plugin"
@@ -253,4 +254,24 @@ function findLegacyCalls(srcDir) {
     }
   })(srcDir);
   return out;
+}
+
+/** Import tên cũ "@cms/…" (trước khi SDK lên npm): CMS vẫn chạy được, nhắc đổi sang tên gói npm. */
+function checkOldImports(dir, warnings) {
+  const found = new Map();
+  const walk = (d, depth = 0) => {
+    if (depth > 6 || !fs.existsSync(d)) return;
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      if (["node_modules", "dist", ".next", ".git"].includes(e.name)) continue;
+      const p = path.join(d, e.name);
+      if (e.isDirectory()) walk(p, depth + 1);
+      else if (/\.(tsx?|jsx?|mjs)$/.test(e.name))
+        for (const m of fs.readFileSync(p, "utf8").matchAll(/["'](@cms\/(theme-sdk|admin-sdk|content))["']/g))
+          if (!found.has(m[1])) found.set(m[1], path.relative(dir, p));
+    }
+  };
+  walk(dir);
+  const NEW = { "@cms/theme-sdk": "@ecomcx/nexus-theme-sdk", "@cms/admin-sdk": "@ecomcx/nexus-admin-sdk", "@cms/content": "@ecomcx/nexus-content" };
+  for (const [old, file] of found)
+    warnings.push(`${file}: import "${old}" là tên cũ — đổi sang "${NEW[old]}" (cài: npm i -D ${NEW[old]}; hoặc npx @ecomcx/create-nexus upgrade)`);
 }
