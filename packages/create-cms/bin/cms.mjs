@@ -8,6 +8,7 @@
 //   create-cms deploy [thư-mục] [--url …] [--user …] [--password …] [--activate]
 //   create-cms dev [thư-mục] [--url …] [--user …] [--password …]   (tự đóng gói + cài lại khi sửa file)
 //   create-cms env up | status | down [--purge]
+import { CLI } from "../lib/npm.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import { c, parseArgs } from "../lib/util.mjs";
@@ -101,7 +102,7 @@ try {
         ? scaffoldTheme(name, { parent: args.parent, dir: args.dir, blocks: !!args.blocks })
         : scaffoldPlugin(name, { backend: args["no-backend"] ? false : args.project ? "project" : "source", admin: !!args.admin, frontend: !!args.frontend, tests: !!args.tests, dir: args.dir });
       console.log(c.green(`✓ Đã tạo ${cmd} ở ${path.relative(process.cwd(), root)}`));
-      console.log(c.dim(`  cd ${path.relative(process.cwd(), root)} && npx github:Ecomcx-Jsc/ecomcx-sdk dev`));
+      console.log(c.dim(`  cd ${path.relative(process.cwd(), root)} && npx ${CLI} dev`));
       break;
     }
     case "validate":

@@ -14,7 +14,11 @@ const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..")
 const out = path.join(root, "dist-release");
 const check = process.argv.includes("--check");
 const run = (cmd, args, cwd) => execFileSync(cmd, args, { cwd, stdio: ["ignore", "pipe", "inherit"] }).toString();
-const PACKAGES = ["packages/admin-sdk", "packages/theme-sdk"];
+const PACKAGES = ["packages/admin-sdk", "packages/theme-sdk", "packages/create-cms"];
+// Tên trên npm (org @ecomcx). Code vẫn import "@cms/…": nơi cài dùng bí danh "@cms/theme-sdk": "npm:@ecomcx/nexus-theme-sdk@^x.y.z"
+const NPM = { "@cms/theme-sdk": "@ecomcx/nexus-theme-sdk", "@cms/admin-sdk": "@ecomcx/nexus-admin-sdk", "@cms/content": "@ecomcx/nexus-content", "create-cms": "@ecomcx/create-nexus" };
+// Tên file đính kèm GitHub Release (giữ như cũ cho các nơi còn cài bằng link)
+const ASSET = { "@cms/theme-sdk": "cms-theme-sdk", "@cms/admin-sdk": "cms-admin-sdk", "create-cms": "create-cms" };
 
 /** "./api" → "./api.js", "./x" (thư mục) → "./x/index.js": Node ESM và webpack (gói type: module) bắt buộc đuôi đầy đủ. */
 function fixSpecifiers(dir) {
@@ -32,8 +36,36 @@ function fixSpecifiers(dir) {
   }
 }
 
+/** Phụ thuộc giữa các gói của mình → bí danh npm (GitHub / workspace không cài được từ npm). */
+function npmDeps(deps, version) {
+  if (!deps) return deps;
+  const out = {};
+  for (const [name, spec] of Object.entries(deps)) {
+    const semver = /#semver:(\^?[\d.]+)$/.exec(spec)?.[1];
+    out[name] = !NPM[name] ? spec
+      : spec.startsWith("file:") ? `npm:${NPM[name]}@${version}`
+      : semver ? `npm:${NPM[name]}@${semver.split(".").length === 2 ? semver + ".0" : semver}` : spec;
+  }
+  return out;
+}
+
+const publishMeta = (pkg, dir) => ({
+  name: NPM[pkg.name] ?? pkg.name,
+  repository: { type: "git", url: "git+https://github.com/Ecomcx-Jsc/ecomcx-sdk.git", directory: dir },
+  homepage: "https://github.com/Ecomcx-Jsc/ecomcx-sdk#readme",
+  license: pkg.license ?? "MIT",
+  publishConfig: { access: "public", provenance: true },
+  dependencies: npmDeps(pkg.dependencies, pkg.version),
+});
+
+/** CLI: chạy thẳng mã nguồn .mjs, chỉ đổi tên + phụ thuộc. */
+function cliManifest(pkg, dir) {
+  const { scripts, devDependencies, ...rest } = pkg;
+  return { ...rest, ...publishMeta(pkg, dir) };
+}
+
 /** package.json bản phát hành: trỏ vào dist/, bỏ script nội bộ. */
-function releaseManifest(pkg) {
+function releaseManifest(pkg, dir) {
   const toDist = (p) => p.replace(/^\.\/src\//, "./dist/").replace(/\.tsx?$/, ".js");
   const exportsMap = {};
   for (const [k, v] of Object.entries(pkg.exports ?? { ".": pkg.main })) {
@@ -43,7 +75,7 @@ function releaseManifest(pkg) {
   exportsMap["./package.json"] = "./package.json";
   const { scripts, devDependencies, ...rest } = pkg;
   const files = ["dist", "README.md", ...(pkg.files ?? []).filter((f) => f !== "src" && f !== "README.md")];
-  return { ...rest, main: toDist(pkg.main), types: toDist(pkg.main).replace(/\.js$/, ".d.ts"), exports: exportsMap, files, sideEffects: false };
+  return { ...rest, ...publishMeta(pkg, dir), main: toDist(pkg.main), types: toDist(pkg.main).replace(/\.js$/, ".d.ts"), exports: exportsMap, files, sideEffects: false };
 }
 
 rmSync(out, { recursive: true, force: true });
@@ -55,6 +87,13 @@ for (const dir of PACKAGES) {
   const pkg = JSON.parse(readFileSync(path.join(root, dir, "package.json"), "utf8"));
   versions.add(pkg.version);
   const stage = path.join(out, "stage", pkg.name.replace("/", "__"));
+  if (!pkg.main) {
+    // CLI: không biên dịch
+    for (const f of pkg.files ?? []) if (existsSync(path.join(root, dir, f))) cpSync(path.join(root, dir, f), path.join(stage, f), { recursive: true });
+    writeFileSync(path.join(stage, "package.json"), JSON.stringify(cliManifest(pkg, dir), null, 2) + "\n");
+    tarballs.push({ name: pkg.name, file: path.join(out, run("npm", ["pack", "--silent", "--pack-destination", out], stage).trim().split("\n").pop()) });
+    continue;
+  }
   // Biên dịch trong node_modules của repo (thư viện phụ thuộc + kiểu của chúng đã được hoist ở đó)
   const work = path.join(root, "node_modules", ".cms-release", path.basename(dir));
   rmSync(work, { recursive: true, force: true });
@@ -73,29 +112,40 @@ for (const dir of PACKAGES) {
   for (const extra of (pkg.files ?? []).filter((f) => f !== "src" && f !== "README.md"))
     if (existsSync(path.join(root, dir, extra))) cpSync(path.join(root, dir, extra), path.join(stage, extra), { recursive: true });
   if (existsSync(path.join(root, dir, "README.md"))) cpSync(path.join(root, dir, "README.md"), path.join(stage, "README.md"));
-  writeFileSync(path.join(stage, "package.json"), JSON.stringify(releaseManifest(pkg), null, 2) + "\n");
-  tarballs.push(path.join(out, run("npm", ["pack", "--silent", "--pack-destination", out], stage).trim().split("\n").pop()));
+  writeFileSync(path.join(stage, "package.json"), JSON.stringify(releaseManifest(pkg, dir), null, 2) + "\n");
+  tarballs.push({ name: pkg.name, file: path.join(out, run("npm", ["pack", "--silent", "--pack-destination", out], stage).trim().split("\n").pop()) });
 }
 rmSync(path.join(out, "stage"), { recursive: true, force: true });
 if (versions.size !== 1) throw new Error(`Các gói phải cùng phiên bản (đang có ${[...versions].join(", ")})`);
 const version = [...versions][0];
 
-// Bản sao không chứa số phiên bản để URL /releases/latest/download/cms-theme-sdk.tgz luôn cố định
-cpSync(path.join(out, `cms-admin-sdk-${version}.tgz`), path.join(out, "cms-admin-sdk.tgz"));
-cpSync(path.join(out, `cms-theme-sdk-${version}.tgz`), path.join(out, "cms-theme-sdk.tgz"));
+// npm pack đặt tên theo gói npm (ecomcx-nexus-theme-sdk-x.y.z.tgz) → tên file đính kèm GitHub Release như cũ
+// + bản không số phiên bản để URL /releases/latest/download/cms-theme-sdk.tgz luôn cố định. npm-publish.json: thứ tự publish.
+const npmList = [];
+for (const t of tarballs) {
+  const asset = path.join(out, `${ASSET[t.name]}-${version}.tgz`);
+  cpSync(t.file, asset);
+  cpSync(t.file, path.join(out, `${ASSET[t.name]}.tgz`));
+  rmSync(t.file);
+  npmList.push({ name: NPM[t.name], file: path.basename(asset) });
+}
+writeFileSync(path.join(out, "npm-publish.json"), JSON.stringify(npmList, null, 2) + "\n");
 
 if (check) {
   const tmp = path.join(out, "check");
   mkdirSync(tmp, { recursive: true });
   writeFileSync(path.join(tmp, "package.json"), JSON.stringify({ name: "check", private: true, type: "module" }));
-  run("npm", ["install", "--no-audit", "--no-fund", "--silent", "--legacy-peer-deps", ...tarballs, "react@19.2.0", "react-dom@19.2.0"], tmp);
+  // Cài như theme/plugin cài: bí danh @cms/… trỏ tarball vừa đóng; @ecomcx/nexus-content lấy từ npm (phải publish trước)
+  run("npm", ["install", "--no-audit", "--no-fund", "--silent", "--legacy-peer-deps",
+    ...npmList.filter((x) => x.name !== NPM["create-cms"]).map((x) => `${Object.keys(NPM).find((k) => NPM[k] === x.name)}@file:${path.join(out, x.file)}`),
+    "react@19.2.0", "react-dom@19.2.0"], tmp);
   writeFileSync(path.join(tmp, "check.mjs"), `
     const admin = await import("@cms/admin-sdk");
     if (typeof admin.registerPage !== "function") throw new Error("@cms/admin-sdk thiếu export");
     console.log("  ✓ @cms/admin-sdk import được (Node ESM)");
     const content = await import("@cms/content");
     if (content.normalizeContent({ type: "doc", content: [] }).doc.version !== 1) throw new Error("@cms/content sai");
-    console.log("  ✓ @cms/content (phụ thuộc của theme-sdk, cài từ GitHub) import được");
+    console.log("  ✓ @cms/content (phụ thuộc của theme-sdk, cài từ npm) import được");
   `);
   console.log(run("node", ["check.mjs"], tmp).trim());
   for (const f of ["@cms/admin-sdk/dist/index.d.ts", "@cms/theme-sdk/dist/index.d.ts", "@cms/theme-sdk/dist/client.js", "@cms/content/dist/index.js"])
@@ -108,5 +158,5 @@ if (check) {
 
 console.log(`Đã đóng gói v${version} trong dist-release/:`);
 for (const f of readdirSync(out)) console.log("  " + f);
-console.log(`\nPhát hành: gh release create v${version} dist-release/*.tgz --title "SDK v${version}"`);
-console.log(`Cài: https://github.com/Ecomcx-Jsc/ecomcx-sdk/releases/download/v${version}/<tên file>`);
+console.log(`\nPhát hành: gh release create v${version} dist-release/*.tgz --title "SDK v${version}" (workflow tự publish lên npm)`);
+console.log(`Cài: "@cms/theme-sdk": "npm:@ecomcx/nexus-theme-sdk@^${version}"`);

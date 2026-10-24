@@ -1,3 +1,4 @@
+import { CLI, alias } from "./npm.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import { c, pascal, slugify, write, findCmsRepo } from "./util.mjs";
@@ -34,7 +35,7 @@ export function scaffoldTheme(name, { parent, dir, blocks = false } = {}) {
     description: "Thêm dependencies npm mà theme cần vào đây — Builder sẽ tự cài khi build.",
     dependencies: {},
     devDependencies: {
-      "@cms/theme-sdk": "https://github.com/Ecomcx-Jsc/ecomcx-sdk/releases/latest/download/cms-theme-sdk.tgz",
+      "@cms/theme-sdk": alias("@cms/theme-sdk"),
       "@types/react": "^19",
       typescript: "5.9.3",
     },
@@ -163,7 +164,7 @@ export default definePlugin({
   },
 });
 `);
-  write(path.join(root, "README.md"), `# ${name}\n\nTheme cho CMS.\n\n- \`npx github:Ecomcx-Jsc/ecomcx-sdk validate\` — kiểm tra theme\n- \`npx github:Ecomcx-Jsc/ecomcx-sdk pack\` — đóng gói thành zip để upload trong Giao diện › Thêm mới\n- \`npx github:Ecomcx-Jsc/ecomcx-sdk dev --password ...\` — tự đóng gói và cài lên CMS local mỗi khi sửa file\n`);
+  write(path.join(root, "README.md"), `# ${name}\n\nTheme cho CMS.\n\n- \`npx ${CLI} validate\` — kiểm tra theme\n- \`npx ${CLI} pack\` — đóng gói thành zip để upload trong Giao diện › Thêm mới\n- \`npx ${CLI} dev --password ...\` — tự đóng gói và cài lên CMS local mỗi khi sửa file\n`);
   return { root, slug };
 }
 
@@ -465,8 +466,8 @@ export default definePlugin({
 
   if (admin || frontend) {
     const devDeps = { "@types/react": "^19", typescript: "5.9.3" };
-    if (admin) devDeps["@cms/admin-sdk"] = "https://github.com/Ecomcx-Jsc/ecomcx-sdk/releases/latest/download/cms-admin-sdk.tgz";
-    if (frontend) devDeps["@cms/theme-sdk"] = "https://github.com/Ecomcx-Jsc/ecomcx-sdk/releases/latest/download/cms-theme-sdk.tgz";
+    if (admin) devDeps["@cms/admin-sdk"] = alias("@cms/admin-sdk");
+    if (frontend) devDeps["@cms/theme-sdk"] = alias("@cms/theme-sdk");
     write(path.join(root, "package.json"), JSON.stringify({
       name: `cms-plugin-${slug}`, private: true, version: "1.0.0",
       description: `Dependencies cho giao diện admin/frontend của plugin ${name}`,
@@ -490,7 +491,7 @@ export default definePlugin({
 
 ${parts}
 
-Lệnh (\`npx github:Ecomcx-Jsc/ecomcx-sdk <lệnh>\`):
+Lệnh (\`npx ${CLI} <lệnh>\`):
 
 - \`env up\` (một lần) rồi \`dev\` — cài lên CMS thử, sửa file là cài lại
 - \`check\` — chạy thử như khi cài / nộp Store: manifest, biên dịch, quét bảo mật

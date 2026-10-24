@@ -6,6 +6,7 @@
 //   --dev        website chạy `next dev`; theme/plugin trong thư mục hiện tại (và thư mục con) được gắn thẳng vào → sửa là thấy
 //   --build DIR  build image từ mã nguồn CMS ở DIR (khi chưa kéo được image dựng sẵn)
 // Tài khoản được lưu ở .cms-env/credentials.json → `create-cms deploy/dev` tự dùng, không cần --password.
+import { CLI } from "./npm.mjs";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import net from "node:net";
@@ -204,7 +205,7 @@ export async function env(action, args) {
   }
   // env up hỏng trước khi lưu tài khoản: vẫn cho env down dọn theo docker-compose.yml đã ghi
   if (!saved && !(action === "down" && fs.existsSync(path.join(dir, "docker-compose.yml"))))
-    throw new Error(`Chưa có môi trường ở ${dir} — chạy: npx github:Ecomcx-Jsc/ecomcx-sdk env up`);
+    throw new Error(`Chưa có môi trường ở ${dir} — chạy: npx ${CLI} env up`);
   if (action === "down") {
     await dc("down", ...(args.purge ? ["-v"] : []));
     if (args.purge) fs.rmSync(dir, { recursive: true, force: true });

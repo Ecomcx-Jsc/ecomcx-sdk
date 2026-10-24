@@ -1,18 +1,21 @@
 {
   "name": "create-cms",
-  "version": "1.23.0",
+  "version": "1.24.0",
   "description": "CLI tạo, kiểm tra, đóng gói và triển khai theme/plugin cho CMS",
   "type": "module",
   "bin": {
+    "create-nexus": "bin/cms.mjs",
     "create-cms": "bin/cms.mjs",
     "cms": "bin/cms.mjs"
   },
   "files": [
     "bin",
-    "lib"
+    "lib",
+    "README.md"
   ],
   "dependencies": {
     "@cms/admin-sdk": "file:../admin-sdk",
+    "@cms/content": "github:Ecomcx-Jsc/ecomcx-nexus-content#semver:^1.13",
     "adm-zip": "0.5.18",
     "esbuild": "0.25.12",
     "intl-messageformat": "12.1.3"

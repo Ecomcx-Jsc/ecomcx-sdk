@@ -1,8 +1,9 @@
 name: Release SDK packages
 
-# Tạo release (tag vX.Y.Z trùng version của packages/*) → build @cms/admin-sdk, @cms/theme-sdk (JS + .d.ts)
-# và đính kèm tarball vào chính release đó. Core/plugin cài bằng URL:
-#   https://github.com/Ecomcx-Jsc/ecomcx-sdk/releases/download/vX.Y.Z/cms-theme-sdk-X.Y.Z.tgz
+# Tạo release (tag vX.Y.Z trùng version của packages/*) → build admin-sdk, theme-sdk (JS + .d.ts) + CLI,
+# đính kèm tarball vào release và publish lên npm: @ecomcx/nexus-admin-sdk, @ecomcx/nexus-theme-sdk, @ecomcx/create-nexus.
+# npm: Trusted Publishing (OIDC, không token) — cấu hình trên npmjs.com cho từng gói: repo Ecomcx-Jsc/ecomcx-sdk, workflow publish.yml.
+# Bản đầu tiên publish tay (scripts/npm-publish.mjs). Cài: "@cms/theme-sdk": "npm:@ecomcx/nexus-theme-sdk@^X.Y.Z"
 on:
   release:
     types: [published]
@@ -17,6 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
     env:
       TAG: ${{ github.event.release.tag_name || inputs.tag }}
     steps:
@@ -27,6 +29,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+
+      # Trusted Publishing cần npm 11.5.1+
+      - run: npm install -g npm@11
 
       - run: npm ci --no-audit --no-fund
 
@@ -40,3 +46,13 @@ jobs:
         run: gh release upload "$TAG" dist-release/*.tgz --clobber
         env:
           GH_TOKEN: ${{ github.token }}
+
+      - name: Publish lên npm (OIDC + provenance)
+        run: |
+          for name in @ecomcx/nexus-admin-sdk @ecomcx/nexus-theme-sdk @ecomcx/create-nexus; do
+            file=$(node -p "require('./dist-release/npm-publish.json').find(x => x.name === '$name').file")
+            if npm view "$name@$(node -p "require('./packages/theme-sdk/package.json').version")" version >/dev/null 2>&1; then
+              echo "$name đã có bản này trên npm — bỏ qua"; continue
+            fi
+            npm publish "dist-release/$file" --access public --provenance
+          done

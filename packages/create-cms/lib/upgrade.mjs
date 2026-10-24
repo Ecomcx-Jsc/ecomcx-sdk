@@ -1,16 +1,21 @@
 import fs from "node:fs";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
+import { NPM, alias } from "./npm.mjs";
 import { c, readJson, run } from "./util.mjs";
 
-const RELEASES = "https://github.com/Ecomcx-Jsc/ecomcx-sdk/releases";
-const SDK = { "@cms/theme-sdk": "cms-theme-sdk", "@cms/admin-sdk": "cms-admin-sdk" };
-const latestUrl = (name) => `${RELEASES}/latest/download/${SDK[name]}.tgz`;
+const SDK = ["@cms/theme-sdk", "@cms/admin-sdk"];
+/** Phiên bản mới nhất trên npm (dự phòng: phiên bản của CLI đang chạy). */
+function latest(name) {
+  try { return execFileSync("npm", ["view", NPM[name], "version"], { encoding: "utf8", shell: process.platform === "win32" }).trim(); }
+  catch { return undefined; }
+}
 
 /**
- * Đưa project theme/plugin lên SDK mới nhất: package.json trỏ link "latest" (kể cả project cũ ghim số phiên bản),
- * bỏ bản đang cài khỏi node_modules + package-lock.json rồi cài lại (--prefer-online: không dùng bản trong cache —
- * cùng một link "latest" mà nội dung đã đổi). Website không phụ thuộc bản này: CMS build theme/plugin bằng SDK của chính nó;
- * bản trong project dùng cho gợi ý code, kiểm tra kiểu và `pack`.
+ * Đưa project theme/plugin lên SDK mới nhất trên npm: package.json ghi bí danh "npm:@ecomcx/nexus-…@^bản mới nhất"
+ * (kể cả project cũ cài bằng link tarball trên GitHub), bỏ bản đang cài khỏi node_modules + package-lock.json rồi cài lại.
+ * Website không phụ thuộc bản này: CMS build theme/plugin bằng SDK của chính nó; bản trong project dùng cho gợi ý code,
+ * kiểm tra kiểu và `pack`.
  */
 export async function upgrade(dir) {
   const pkgFile = path.join(dir, "package.json");
@@ -18,10 +23,10 @@ export async function upgrade(dir) {
   if (!pkg) throw new Error(`Không thấy package.json ở ${dir}`);
   const found = [];
   for (const section of ["dependencies", "devDependencies"])
-    for (const name of Object.keys(SDK))
+    for (const name of SDK)
       if (pkg[section]?.[name] !== undefined) {
         const before = pkg[section][name];
-        pkg[section][name] = latestUrl(name);
+        pkg[section][name] = alias(name, latest(name));
         found.push({ name, before, installed: readJson(path.join(dir, "node_modules", ...name.split("/"), "package.json"))?.version ?? null });
       }
   if (!found.length) { console.log(c.dim("  Project không dùng @cms/theme-sdk hay @cms/admin-sdk — không có gì để nâng.")); return { upgraded: [] }; }
@@ -33,8 +38,8 @@ export async function upgrade(dir) {
   if (lock?.packages) {
     for (const { name } of found) {
       delete lock.packages[`node_modules/${name}`];
-      if (lock.packages[""]?.dependencies?.[name]) lock.packages[""].dependencies[name] = latestUrl(name);
-      if (lock.packages[""]?.devDependencies?.[name]) lock.packages[""].devDependencies[name] = latestUrl(name);
+      if (lock.packages[""]?.dependencies?.[name]) lock.packages[""].dependencies[name] = pkg.dependencies[name];
+      if (lock.packages[""]?.devDependencies?.[name]) lock.packages[""].devDependencies[name] = pkg.devDependencies[name];
     }
     fs.writeFileSync(lockFile, JSON.stringify(lock, null, 2) + "\n");
   }
